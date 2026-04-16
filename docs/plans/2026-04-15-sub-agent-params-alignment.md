@@ -25,14 +25,16 @@
 | 字段 | 类型 | description | 适用 agent |
 |------|------|-------------|-----------|
 | `title` | `String` | architect only: 书名 | architect |
-| `genre` | `String` | architect only: 题材 (xuanhuan, urban, mystery, romance, scifi, fantasy, wuxia, general 等) | architect |
-| `platform` | `String` | architect only: 目标平台 (tomato, qidian, feilu, other) | architect |
-| `language` | `String` | architect only: 写作语言 (zh/en)，默认 zh | architect |
+| `genre` | `String` | architect only: 题材 (xuanhuan, urban, mystery 等) | architect |
+| `platform` | `Union(Literal)` | architect only: 目标平台 (tomato/qidian/feilu/other) | architect |
+| `language` | `Union(Literal)` | architect only: 写作语言 (zh/en) | architect |
 | `targetChapters` | `Number` | architect only: 目标总章数，默认 200 | architect |
 | `chapterWordCount` | `Number` | architect/writer: 每章目标字数，默认 3000 | architect, writer |
-| `mode` | `String` | reviser only: 修订模式 (spot-fix/polish/rewrite/rework/anti-detect)，默认 spot-fix | reviser |
-| `format` | `String` | exporter only: 导出格式 (txt/md/epub)，默认 txt | exporter |
+| `mode` | `Union(Literal)` | reviser only: 修订模式 (spot-fix/polish/rewrite/rework/anti-detect) | reviser |
+| `format` | `Union(Literal)` | exporter only: 导出格式 (txt/md/epub) | exporter |
 | `approvedOnly` | `Boolean` | exporter only: 仅导出已审核通过的章节 | exporter |
+
+> **设计原则**：有限枚举值用 `Type.Union([Type.Literal(...)])` 而非 `Type.String`，模型能在 JSON Schema 里看到合法值列表（`const` 约束），不会传错。`genre` 和 `title` 是开放文本保持 `String`。
 
 ## 各 agent 行为变更
 

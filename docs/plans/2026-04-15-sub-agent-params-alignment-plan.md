@@ -95,14 +95,32 @@ const SubAgentParams = Type.Object({
   // -- architect params --
   title: Type.Optional(Type.String({ description: "architect only: book title" })),
   genre: Type.Optional(Type.String({ description: "architect only: genre (xuanhuan, urban, mystery, romance, scifi, fantasy, wuxia, general, etc.)" })),
-  platform: Type.Optional(Type.String({ description: "architect only: target platform (tomato, qidian, feilu, other). Default: other" })),
-  language: Type.Optional(Type.String({ description: "architect only: writing language (zh/en). Default: zh" })),
+  platform: Type.Optional(Type.Union([
+    Type.Literal("tomato"),
+    Type.Literal("qidian"),
+    Type.Literal("feilu"),
+    Type.Literal("other"),
+  ], { description: "architect only: target platform. Default: other" })),
+  language: Type.Optional(Type.Union([
+    Type.Literal("zh"),
+    Type.Literal("en"),
+  ], { description: "architect only: writing language. Default: zh" })),
   targetChapters: Type.Optional(Type.Number({ description: "architect only: total chapter count. Default: 200" })),
   chapterWordCount: Type.Optional(Type.Number({ description: "architect/writer: words per chapter. Default: 3000" })),
   // -- reviser params --
-  mode: Type.Optional(Type.String({ description: "reviser only: revision mode (spot-fix, polish, rewrite, rework, anti-detect). Default: spot-fix" })),
+  mode: Type.Optional(Type.Union([
+    Type.Literal("spot-fix"),
+    Type.Literal("polish"),
+    Type.Literal("rewrite"),
+    Type.Literal("rework"),
+    Type.Literal("anti-detect"),
+  ], { description: "reviser only: revision mode. Default: spot-fix" })),
   // -- exporter params --
-  format: Type.Optional(Type.String({ description: "exporter only: export format (txt, md, epub). Default: txt" })),
+  format: Type.Optional(Type.Union([
+    Type.Literal("txt"),
+    Type.Literal("md"),
+    Type.Literal("epub"),
+  ], { description: "exporter only: export format. Default: txt" })),
   approvedOnly: Type.Optional(Type.Boolean({ description: "exporter only: export only approved chapters. Default: false" })),
 });
 ```
