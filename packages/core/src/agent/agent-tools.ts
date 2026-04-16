@@ -96,14 +96,25 @@ export function createSubAgentTool(pipeline: PipelineRunner, activeBookId: strin
       try {
         switch (agent) {
           case "architect": {
-            // architect 只在没有书的时候可用（建书流程）
             if (activeBookId) {
               return textResult("当前已有书籍，不需要建书。如果你想创建新书，请先回到首页。");
             }
             const id = bookId || `book-${Date.now().toString(36)}`;
+            const now = new Date().toISOString();
             progress(`Starting architect for book "${id}"...`);
             await pipeline.initBook(
-              { id, genre: "general", title: "", language: "zh" } as any,
+              {
+                id,
+                title: title ?? "",
+                genre: genre ?? "general",
+                platform: (platform ?? "other") as any,
+                language: (language ?? "zh") as any,
+                status: "outlining" as any,
+                targetChapters: targetChapters ?? 200,
+                chapterWordCount: chapterWordCount ?? 3000,
+                createdAt: now,
+                updatedAt: now,
+              },
               { externalContext: instruction },
             );
             progress(`Architect finished — book "${id}" foundation created.`);
@@ -113,11 +124,10 @@ export function createSubAgentTool(pipeline: PipelineRunner, activeBookId: strin
           case "writer": {
             if (!bookId) return textResult("Error: bookId is required for the writer agent.");
             progress(`Writing next chapter for "${bookId}"...`);
-            const result = await pipeline.writeNextChapter(bookId);
+            const result = await pipeline.writeNextChapter(bookId, chapterWordCount);
             progress(`Writer finished chapter for "${bookId}".`);
             return textResult(
-              `Chapter written for "${bookId}". ` +
-              `Word count: ${(result as any).wordCount ?? "unknown"}.`,
+              `Chapter written for "${bookId}". Word count: ${(result as any).wordCount ?? "unknown"}.`,
             );
           }
 
@@ -126,27 +136,22 @@ export function createSubAgentTool(pipeline: PipelineRunner, activeBookId: strin
             progress(`Auditing chapter ${chapterNumber ?? "latest"} for "${bookId}"...`);
             const audit = await pipeline.auditDraft(bookId, chapterNumber);
             progress(`Audit complete for "${bookId}".`);
-            const issueCount = audit.issues?.length ?? 0;
+            const issueLines = (audit.issues ?? [])
+              .map((i: any) => `[${i.severity}] ${i.description}`)
+              .join("\n");
             return textResult(
-              `Audit complete for "${bookId}": ${issueCount} issue(s) found. ` +
-              `Chapter ${audit.chapterNumber}.`,
+              `Audit chapter ${audit.chapterNumber}: ${audit.passed ? "PASSED" : "FAILED"}, ${(audit.issues ?? []).length} issue(s).` +
+              (issueLines ? `\n${issueLines}` : ""),
             );
           }
 
           case "reviser": {
             if (!bookId) return textResult("Error: bookId is required for the reviser agent.");
-            // Detect revision mode from instruction keywords
-            const mode: ReviseMode = /rewrite|改写|重写/.test(instruction)
-              ? "rewrite"
-              : /polish|润色/.test(instruction)
-                ? "polish"
-                : /rework|返工/.test(instruction)
-                  ? "rework"
-                  : "spot-fix";
-            progress(`Revising "${bookId}" chapter ${chapterNumber ?? "latest"} in ${mode} mode...`);
-            await pipeline.reviseDraft(bookId, chapterNumber, mode);
+            const resolvedMode: ReviseMode = (mode as ReviseMode) ?? "spot-fix";
+            progress(`Revising "${bookId}" chapter ${chapterNumber ?? "latest"} in ${resolvedMode} mode...`);
+            await pipeline.reviseDraft(bookId, chapterNumber, resolvedMode);
             progress(`Revision complete for "${bookId}".`);
-            return textResult(`Revision (${mode}) complete for "${bookId}" chapter ${chapterNumber ?? "latest"}.`);
+            return textResult(`Revision (${resolvedMode}) complete for "${bookId}" chapter ${chapterNumber ?? "latest"}.`);
           }
 
           case "exporter": {
