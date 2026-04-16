@@ -196,64 +196,67 @@ export function ServiceDetailPage({ serviceId, nav }: { serviceId: string; nav: 
     }
     setStatus({ state: "saving" });
     try {
-      // Save key (empty = delete)
-      await fetchJson(`/services/${encodeURIComponent(effectiveServiceId)}/secret`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey: trimmedKey }),
-      });
-      // Save config (temperature, maxTokens, etc.)
-      await fetchJson("/services/config", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          service: effectiveServiceId,
-          ...(detectedModel ? { defaultModel: detectedModel } : {}),
-          services: [
-            {
-              service: isCustom ? "custom" : serviceId,
-              temperature: parseFloat(temperature),
-              maxTokens: parseInt(maxTokens, 10),
-              apiFormat,
-              stream,
-              ...(isCustom ? { name: resolvedCustomName, baseUrl: baseUrl.trim() } : {}),
-            },
-          ],
-        }),
-      });
+      // Validate key BEFORE saving — don't persist invalid keys
       if (trimmedKey) {
-        try {
-          const result = await fetchJson<{
-            ok: boolean;
-            models?: ModelInfo[];
-            selectedModel?: string;
-            detected?: DetectedConfig;
-            error?: string;
-          }>(`/services/${encodeURIComponent(effectiveServiceId)}/test`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              apiKey: trimmedKey,
-              apiFormat,
-              stream,
-              ...(isCustom ? { baseUrl: baseUrl.trim() } : {}),
-            }),
-          });
-          if (result.ok && result.models) {
-            if (result.detected?.apiFormat) setApiFormat(result.detected.apiFormat);
-            if (typeof result.detected?.stream === "boolean") setStream(result.detected.stream);
-            if (isCustom && result.detected?.baseUrl) setBaseUrl(result.detected.baseUrl);
-            setDetectedModel(result.selectedModel ?? detectedModel);
-            setDetectedConfig(result.detected ?? detectedConfig);
-            setStoreModels(effectiveServiceId, result.models);
-            setStatus({ state: "connected", models: result.models });
-          } else {
-            setStatus({ state: "error", message: result.error ?? "连接失败" });
-          }
-        } catch (e) {
-          setStatus({ state: "error", message: e instanceof Error ? e.message : "连接失败" });
+        const testResult = await fetchJson<{
+          ok: boolean;
+          models?: ModelInfo[];
+          selectedModel?: string;
+          detected?: DetectedConfig;
+          error?: string;
+        }>(`/services/${encodeURIComponent(effectiveServiceId)}/test`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            apiKey: trimmedKey,
+            apiFormat,
+            stream,
+            ...(isCustom ? { baseUrl: baseUrl.trim() } : {}),
+          }),
+        });
+        if (!testResult.ok) {
+          setStatus({ state: "error", message: testResult.error ?? "连接失败，未保存" });
+          return;
         }
+        // Apply detected settings
+        if (testResult.detected?.apiFormat) setApiFormat(testResult.detected.apiFormat);
+        if (typeof testResult.detected?.stream === "boolean") setStream(testResult.detected.stream);
+        if (isCustom && testResult.detected?.baseUrl) setBaseUrl(testResult.detected.baseUrl);
+        setDetectedModel(testResult.selectedModel ?? detectedModel);
+        setDetectedConfig(testResult.detected ?? detectedConfig);
+        // Now save — key is validated
+        await fetchJson(`/services/${encodeURIComponent(effectiveServiceId)}/secret`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ apiKey: trimmedKey }),
+        });
+        await fetchJson("/services/config", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            service: effectiveServiceId,
+            ...(testResult.selectedModel ? { defaultModel: testResult.selectedModel } : {}),
+            services: [
+              {
+                service: isCustom ? "custom" : serviceId,
+                temperature: parseFloat(temperature),
+                maxTokens: parseInt(maxTokens, 10),
+                apiFormat,
+                stream,
+                ...(isCustom ? { name: resolvedCustomName, baseUrl: baseUrl.trim() } : {}),
+              },
+            ],
+          }),
+        });
+        setStoreModels(effectiveServiceId, testResult.models ?? []);
+        setStatus({ state: "connected", models: testResult.models ?? [] });
       } else {
+        // Empty key = delete
+        await fetchJson(`/services/${encodeURIComponent(effectiveServiceId)}/secret`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ apiKey: "" }),
+        });
         clearStoreModels(effectiveServiceId);
         setStatus({ state: "saved" });
       }
