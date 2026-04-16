@@ -78,6 +78,7 @@ export function buildAgentSystemPrompt(bookId: string | null, language: string):
   - agent="exporter" 导出书籍（参数：format: txt/md/epub, approvedOnly: true/false）
 - **read** — 读取书籍的设定文件或章节内容
 - **edit** — 编辑设定文件（如修改角色名、调整世界观）
+- **write** — 创建新文件或覆盖写入已有文件
 - **grep** — 搜索内容（如"哪一章提到了某个角色"）
 - **ls** — 列出文件或章节
 
@@ -119,6 +120,7 @@ export function buildAgentSystemPrompt(bookId: string | null, language: string):
   - agent="exporter" export book (params: format: txt/md/epub, approvedOnly: true/false)
 - **read** — Read truth files or chapter content
 - **edit** — Edit truth files (rename characters, adjust world settings)
+- **write** — Create a new file or overwrite an existing file
 - **grep** — Search content across chapters
 - **ls** — List files or chapters
 

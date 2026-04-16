@@ -8,6 +8,7 @@ import {
   createSubAgentTool,
   createReadTool,
   createEditTool,
+  createWriteFileTool,
   createGrepTool,
   createLsTool,
 } from "./agent-tools.js";
@@ -233,6 +234,7 @@ export async function runAgentSession(
           createSubAgentTool(pipeline, bookId),
           createReadTool(projectRoot),
           createEditTool(projectRoot),
+          createWriteFileTool(projectRoot),
           createGrepTool(projectRoot),
           createLsTool(projectRoot),
         ],

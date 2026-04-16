@@ -248,6 +248,42 @@ export function createEditTool(projectRoot: string): AgentTool<typeof EditParams
 }
 
 // ---------------------------------------------------------------------------
+// 3b. Write File Tool
+// ---------------------------------------------------------------------------
+
+const WriteFileParams = Type.Object({
+  path: Type.String({ description: "File path relative to books/" }),
+  content: Type.String({ description: "Full file content to write" }),
+});
+
+export function createWriteFileTool(projectRoot: string): AgentTool<typeof WriteFileParams> {
+  const booksRoot = join(projectRoot, "books");
+
+  return {
+    name: "write",
+    description:
+      "Create a new file or overwrite an existing file. " +
+      "Path is relative to books/. Parent directories are created automatically.",
+    label: "Write File",
+    parameters: WriteFileParams,
+    async execute(
+      _toolCallId: string,
+      params: Static<typeof WriteFileParams>,
+    ): Promise<AgentToolResult<undefined>> {
+      try {
+        const filePath = safeBooksPath(booksRoot, params.path);
+        const { mkdir } = await import("node:fs/promises");
+        await mkdir(resolve(filePath, ".."), { recursive: true });
+        await writeFile(filePath, params.content, "utf-8");
+        return textResult(`File "${params.path}" written successfully.`);
+      } catch (err: any) {
+        return textResult(`Failed to write "${params.path}": ${err?.message ?? String(err)}`);
+      }
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // 4. Grep Tool
 // ---------------------------------------------------------------------------
 
