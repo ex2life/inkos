@@ -534,6 +534,15 @@ Rules:
     const roles = output.roles ?? [];
     const isPhase5Output = storyFrame.trim().length > 0;
 
+    // debug: 让排查时能一眼看出 LLM 按哪套格式输出、落到哪套文件布局。
+    // 如果用户新建书后发现只有 story_bible.md / 没有 outline/，看这行日志能
+    // 确认是 LLM 没按新 prompt 输出（走了 legacy 分支），而不是 writeFoundationFiles
+    // 本身的 bug。
+    this.ctx.logger?.info(
+      `[architect] writeFoundationFiles layout=${isPhase5Output ? "phase5" : "legacy"} ` +
+      `storyFrame=${storyFrame.length}chars volumeMap=${volumeMap.length}chars roles=${roles.length}`,
+    );
+
     if (isPhase5Output) {
       // book_rules 的 YAML frontmatter 提取后拼到 story_frame.md 顶部，作为权威位置。
       const { frontmatter: bookRulesFrontmatter, body: bookRulesBody } =
