@@ -557,6 +557,32 @@ Rules:
       `storyFrame=${storyFrame.length}chars volumeMap=${volumeMap.length}chars roles=${roles.length}`,
     );
 
+    // revise 模式 + LLM 回退 legacy 输出 → 必须抛错，不写任何文件。
+    // 原因：如果走 legacy 分支覆盖 story_bible.md 等 flat 文件，而 outline/
+    // 和 roles/ 保持不变，会让 Phase 5 书进入"outline 新 + shim 老 + roles
+    // 残留"的混乱状态；读取端的 fallback 逻辑会读到互相矛盾的内容。
+    // 抛错让用户立刻感知 LLM 响应异常，而不是默默破坏书的数据完整性。
+    if (mode === "revise" && !isPhase5Output) {
+      throw new Error(
+        "Architect revise mode produced legacy-format output (storyFrame empty). " +
+        "This likely means the LLM didn't follow the reviseFrom prompt. " +
+        "The book's architecture files have NOT been modified. " +
+        "Check prompt / model / temperature and try again.",
+      );
+    }
+
+    // revise 模式下先清空旧 role 文件，再写本次 architect 输出——避免改名 / 删除 /
+    // 合并角色后的旧卡片残留被 readRoleCards 当作有效角色继续注入（见 Bug 3）。
+    // 备份由上游 runner.reviseFoundation 在调用前完成，这里可以安全清空。
+    // init 模式下目录本来就是空的，不需要清。
+    // 放在 if (isPhase5Output) 外面，保证所有 revise 场景都清。
+    if (mode === "revise") {
+      await rm(rolesMajorDir, { recursive: true, force: true });
+      await rm(rolesMinorDir, { recursive: true, force: true });
+      await mkdir(rolesMajorDir, { recursive: true });
+      await mkdir(rolesMinorDir, { recursive: true });
+    }
+
     if (isPhase5Output) {
       // book_rules 的 YAML frontmatter 提取后拼到 story_frame.md 顶部，作为权威位置。
       const { frontmatter: bookRulesFrontmatter, body: bookRulesBody } =
@@ -571,17 +597,6 @@ Rules:
       if (rhythmPrinciples.trim()) {
         const rhythmFileName = language === "en" ? "rhythm_principles.md" : "节奏原则.md";
         writes.push(writeFile(join(outlineDir, rhythmFileName), rhythmPrinciples, "utf-8"));
-      }
-
-      // revise 模式下先清空旧 role 文件，再写本次输出——避免改名/删除/合并角色
-      // 后的旧卡片残留被 readRoleCards 当作有效角色继续注入（见 Bug 3）。
-      // 备份由上游 runner.reviseFoundation 在调用前完成，这里可以安全清空。
-      // init 模式下目录本来就是空的，不需要清。
-      if (mode === "revise") {
-        await rm(rolesMajorDir, { recursive: true, force: true });
-        await rm(rolesMinorDir, { recursive: true, force: true });
-        await mkdir(rolesMajorDir, { recursive: true });
-        await mkdir(rolesMinorDir, { recursive: true });
       }
 
       // 一人一卡
@@ -614,7 +629,8 @@ Rules:
         "utf-8",
       ));
     } else {
-      // Legacy 输出路径：LLM 还按老 prompt 输出 story_bible / volume_outline。
+      // Legacy 输出路径（仅 init 模式——revise + legacy 已在上面抛错）：
+      // LLM 还按老 prompt 输出 story_bible / volume_outline，走 Phase 4 落盘方式。
       writes.push(writeFile(join(storyDir, "story_bible.md"), output.storyBible, "utf-8"));
       writes.push(writeFile(join(storyDir, "volume_outline.md"), output.volumeOutline, "utf-8"));
       writes.push(writeFile(join(storyDir, "book_rules.md"), output.bookRules, "utf-8"));

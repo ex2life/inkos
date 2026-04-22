@@ -387,6 +387,75 @@ describe("pipeline.reviseFoundation", () => {
     }
   });
 
+  it("revise 模式 + LLM 意外输出 legacy 格式 → 抛错且不动架构稿文件", async () => {
+    const { mkdtemp, writeFile, mkdir, rm, readFile } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { PipelineRunner } = await import("../pipeline/runner.js");
+    const { StateManager } = await import("../state/manager.js");
+
+    const root = await mkdtemp(join(tmpdir(), "inkos-revise-legacyfallback-"));
+    const bookDir = join(root, "books", "safe-book");
+
+    try {
+      // 构造 Phase 5 书 —— outline/ + roles/ 有原始内容
+      await mkdir(join(bookDir, "story", "outline"), { recursive: true });
+      await mkdir(join(bookDir, "story", "roles", "主要角色"), { recursive: true });
+      await writeFile(join(bookDir, "story", "outline", "story_frame.md"), "原始 story_frame", "utf-8");
+      await writeFile(join(bookDir, "story", "outline", "volume_map.md"), "原始 volume_map", "utf-8");
+      await writeFile(join(bookDir, "story", "roles", "主要角色", "原始角色.md"), "原始角色内容", "utf-8");
+      await writeFile(join(bookDir, "story", "story_bible.md"), "shim 指针", "utf-8");
+      await writeFile(join(bookDir, "story", "character_matrix.md"), "", "utf-8");
+      await writeFile(join(bookDir, "story", "volume_outline.md"), "", "utf-8");
+      await writeFile(join(bookDir, "story", "book_rules.md"), "", "utf-8");
+      await writeFile(join(bookDir, "book.json"), JSON.stringify({
+        id: "safe-book", title: "t", platform: "qidian", genre: "xuanhuan",
+        status: "active", targetChapters: 50, chapterWordCount: 3000, language: "zh",
+        createdAt: "2026-04-01T00:00:00.000Z", updatedAt: "2026-04-10T00:00:00.000Z",
+      }), "utf-8");
+
+      // Stub architect → 模拟 LLM 回退 legacy 输出（storyFrame 为空 / 没 roles）
+      vi.spyOn(ArchitectAgent.prototype, "generateFoundation").mockResolvedValue({
+        storyBible: "LLM 产出的 legacy story bible",
+        volumeOutline: "LLM 产出的 legacy volume outline",
+        bookRules: "---\nversion: \"1.0\"\n---\n",
+        currentState: "",
+        pendingHooks: "| hook_id |",
+        // 故意不填 storyFrame / volumeMap / roles —— 模拟 LLM 回退 legacy
+      } as unknown as Awaited<ReturnType<ArchitectAgent["generateFoundation"]>>);
+      vi.spyOn(FoundationReviewerAgent.prototype, "review").mockResolvedValue({
+        passed: true, totalScore: 90, dimensions: [], overallFeedback: "ok",
+      } as unknown as Awaited<ReturnType<FoundationReviewerAgent["review"]>>);
+
+      const state = new StateManager(root);
+      const runner = new PipelineRunner({
+        state, projectRoot: root, client: TEST_CLIENT, model: "test-model",
+      } as unknown as ConstructorParameters<typeof PipelineRunner>[0]);
+
+      // revise 应该抛错
+      await expect(runner.reviseFoundation("safe-book", "改"))
+        .rejects.toThrow(/legacy-format output.*NOT been modified/);
+
+      // 架构稿原始文件**必须保持不变**（writeFoundationFiles 在抛错前没写任何文件）
+      // 注意：rolesMajorDir 在 reviseFoundation 的 Step 5 里会被 mkdir（但不删），
+      // 写角色卡的 loop 在抛错之前，具体行为看实现：抛错在 rm + mkdir 之后但 writeFile 之前。
+      // 所以旧角色文件可能被 rm 删掉，但那是在 runner.reviseFoundation 已经备份到
+      // .backup-phase5-<ts>/ 之后。验证备份里有原始内容即可。
+      const storyFrame = await readFile(join(bookDir, "story", "outline", "story_frame.md"), "utf-8");
+      expect(storyFrame).toBe("原始 story_frame");  // outline/ 没被动
+
+      const volumeMap = await readFile(join(bookDir, "story", "outline", "volume_map.md"), "utf-8");
+      expect(volumeMap).toBe("原始 volume_map");
+
+      // story_bible.md 也没被覆盖（legacy 输出的 "LLM 产出的 legacy story bible" 没写进去）
+      const storyBible = await readFile(join(bookDir, "story", "story_bible.md"), "utf-8");
+      expect(storyBible).toBe("shim 指针");
+      expect(storyBible).not.toContain("LLM 产出的 legacy");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("Phase 5 revise 备份目录带 phase5 tag 并包含 outline/ + roles/", async () => {
     const { mkdtemp, writeFile, mkdir, rm, readdir, access } = await import("node:fs/promises");
     const { tmpdir } = await import("node:os");
