@@ -266,4 +266,67 @@ describe("buildWriterSystemPrompt", () => {
     expect(prompt).toContain("English Variance Brief");
     expect(prompt).toContain("resistance-bearing exchange");
   });
+
+  it("emits Russian universal rules and craft card when language is ru", () => {
+    const prompt = buildWriterSystemPrompt(
+      { ...BOOK, language: "ru" },
+      { ...GENRE, language: "ru", name: "Городское фэнтези" },
+      null,
+      "# Book Rules",
+      "# Genre Body",
+      "# Style Guide",
+      undefined,
+      3,
+      "creative",
+      undefined,
+      "ru",
+      "governed",
+    );
+
+    // Russian-specific universal rules
+    expect(prompt).toContain("## Универсальные правила письма");
+    // Russian writing craft card (always-on rules)
+    expect(prompt).toContain("## Писательские правила");
+    // Russian creative constitution and pillars of immersion
+    expect(prompt).toContain("## Творческая конституция");
+    expect(prompt).toContain("## Шесть опор погружения");
+    // Russian anti-AI rules with the actual stock-phrase ban list
+    expect(prompt).toContain("## Железные законы против AI-следа");
+    expect(prompt).toContain("тем не менее");
+    expect(prompt).toContain("стоит отметить");
+    // Genre intro that names Russian platforms and writes Russian
+    expect(prompt).toContain("Author.Today");
+    // Length governance rendered with Russian unit
+    expect(prompt).toContain("слов");
+    // No untranslated Chinese craft sections leak through
+    expect(prompt).not.toContain("## 写作铁律");
+  });
+
+  it("injects Russian golden opening discipline for ch<=3 and Russian length guidance", () => {
+    for (const ch of [1, 2, 3]) {
+      const prompt = buildWriterSystemPrompt(
+        { ...BOOK, language: "ru" },
+        { ...GENRE, language: "ru", name: "Городское фэнтези" },
+        null,
+        "# Book Rules",
+        "# Genre Body",
+        "# Style Guide",
+        undefined,
+        ch,
+        "creative",
+        undefined,
+        "ru",
+        "governed",
+      );
+      expect(prompt).toContain("Дисциплина золотого открытия");
+      expect(prompt).toContain(`глава ${ch}`);
+      expect(prompt).toContain("Цель:");
+      expect(prompt).toContain("Допустимый диапазон");
+    }
+  });
+
+  it("Russian golden opening discipline returns empty string for ch>=4", () => {
+    expect(buildGoldenOpeningDiscipline(4, "ru")).toBe("");
+    expect(buildGoldenOpeningDiscipline(undefined, "ru")).toBe("");
+  });
 });
