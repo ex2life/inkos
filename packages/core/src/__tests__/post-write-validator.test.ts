@@ -62,6 +62,28 @@ describe("validatePostWrite", () => {
     expect(findRule(result, "禁止破折号")).toBeUndefined();
   });
 
+  it("flags chapter-number references in Russian prose with a Russian rule label", () => {
+    const content = "Он шагнул вперёд. Глава 12 была позади. Дверь скрипнула.";
+    const validateWithLanguage = validatePostWrite as (
+      content: string,
+      genreProfile: GenreProfile,
+      bookRules: null,
+      languageOverride?: "zh" | "en" | "ru",
+    ) => ReadonlyArray<PostWriteViolation>;
+
+    const result = validateWithLanguage(content, baseProfile, null, "ru");
+
+    // Chinese-only rules should not fire.
+    expect(findRule(result, "禁止破折号")).toBeUndefined();
+    expect(findRule(result, "章节号指称")).toBeUndefined();
+    // Russian-specific chapter-number rule fires with substantive Russian text.
+    const v = findRule(result, "Упоминание номера главы");
+    expect(v).toBeDefined();
+    expect(v!.severity).toBe("error");
+    expect(v!.description).toContain("Глава 12");
+    expect(v!.suggestion).toMatch(/[А-Яа-я]/);
+  });
+
   it("detects surprise marker density exceeding threshold", () => {
     // ~100 chars total, threshold = max(1, floor(100/3000)) = 1, but we put 3 markers
     const content = "他忽然站起来。仿佛听到了什么声音。竟然是那个人回来了。";

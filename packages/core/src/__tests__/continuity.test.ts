@@ -177,6 +177,99 @@ describe("ContinuityAuditor", () => {
     }
   });
 
+  it("localizes Russian audit prompts instead of falling through to Chinese control text", async () => {
+    const root = await mkdtemp(join(tmpdir(), "inkos-auditor-ru-prompt-test-"));
+    const bookDir = join(root, "book");
+    const storyDir = join(bookDir, "story");
+    await mkdir(storyDir, { recursive: true });
+
+    await Promise.all([
+      writeFile(
+        join(bookDir, "book.json"),
+        JSON.stringify({
+          id: "russian-book",
+          title: "Русская книга",
+          genre: "other",
+          platform: "litres",
+          chapterWordCount: 800,
+          targetChapters: 60,
+          status: "active",
+          language: "ru",
+          createdAt: "2026-03-23T00:00:00.000Z",
+          updatedAt: "2026-03-23T00:00:00.000Z",
+        }, null, 2),
+        "utf-8",
+      ),
+      writeFile(join(storyDir, "current_state.md"), "# Текущее состояние\n\n- Маша прячет ключ от склада.\n", "utf-8"),
+      writeFile(join(storyDir, "pending_hooks.md"), "# Pending Hooks\n", "utf-8"),
+      writeFile(join(storyDir, "chapter_summaries.md"), "# Chapter Summaries\n", "utf-8"),
+      writeFile(join(storyDir, "subplot_board.md"), "# Subplot Board\n", "utf-8"),
+      writeFile(join(storyDir, "emotional_arcs.md"), "# Emotional Arcs\n", "utf-8"),
+      writeFile(join(storyDir, "character_matrix.md"), "# Character Matrix\n", "utf-8"),
+      writeFile(join(storyDir, "volume_outline.md"), "# Volume Outline\n\n## Chapter 1\nПроверить склад 9.\n", "utf-8"),
+      writeFile(join(storyDir, "style_guide.md"), "# Style Guide\n\n- Сдержанная проза.\n", "utf-8"),
+    ]);
+
+    const auditor = new ContinuityAuditor({
+      client: {
+        provider: "openai",
+        apiFormat: "chat",
+        stream: false,
+        defaults: {
+          temperature: 0.7,
+          maxTokens: 4096,
+          thinkingBudget: 0,
+          extra: {},
+        },
+      },
+      model: "test-model",
+      projectRoot: root,
+    });
+
+    const chatSpy = vi.spyOn(ContinuityAuditor.prototype as never, "chat" as never).mockResolvedValue({
+      content: JSON.stringify({
+        passed: true,
+        issues: [],
+        summary: "ok",
+      }),
+      usage: ZERO_USAGE,
+    });
+
+    try {
+      await auditor.auditChapter(bookDir, "Текст главы.", 1, "other");
+
+      const messages = chatSpy.mock.calls[0]?.[0] as
+        | ReadonlyArray<{ content: string }>
+        | undefined;
+      const systemPrompt = messages?.[0]?.content ?? "";
+      const userPrompt = messages?.[1]?.content ?? "";
+
+      // Russian dimension labels render in Russian.
+      expect(systemPrompt).toContain("Завязки и крючки");
+      expect(systemPrompt).toContain("Отклонение от памятки главы");
+      // Russian system-prompt frame
+      expect(systemPrompt).toContain("ВЕСЬ ОТВЕТ ДОЛЖЕН БЫТЬ НА РУССКОМ ЯЗЫКЕ");
+      expect(systemPrompt).toContain("Зона ответственности рецензента");
+      // Russian dimension methodology actually present (not falling through to Chinese).
+      expect(systemPrompt).toContain("тесту трёх вопросов");
+      expect(systemPrompt).toContain("Эскалация долга по крючкам");
+      // Chinese fall-through markers must be absent.
+      expect(systemPrompt).not.toContain("伏笔检查");
+      expect(systemPrompt).not.toContain("人设三问检查");
+      expect(systemPrompt).not.toContain("审稿边界");
+
+      // joinLocalized for non-zh languages joins with ", " — verify by checking
+      // a Russian dimension whose note interpolates a list still uses ", ".
+      // (Dimension 6 / 7 / 25 don't list; the user prompt headings carry the test.)
+      expect(userPrompt).toContain("Проверь главу 1.");
+      expect(userPrompt).toContain("## Карточка текущего состояния");
+      expect(userPrompt).not.toContain("请审查第1章");
+      expect(userPrompt).not.toContain("## 当前状态卡");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("uses selected summary and hook evidence instead of full long-history markdown in governed mode", async () => {
     const root = await mkdtemp(join(tmpdir(), "inkos-auditor-test-"));
     const bookDir = join(root, "book");

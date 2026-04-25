@@ -51,6 +51,16 @@ const ENGLISH_STOP_WORDS = new Set([
   "over", "under", "this", "that", "your", "their",
 ]);
 
+const RUSSIAN_STOP_WORDS = new Set([
+  "это", "этот", "этого", "этому", "этим", "этой",
+  "тот", "того", "тому", "тем", "там", "туда",
+  "что", "чтобы", "если", "когда", "пока", "хотя",
+  "перед", "после", "через", "между", "около", "среди",
+  "очень", "такой", "такие", "также", "потом", "затем",
+  "свой", "своего", "своему", "своим", "своей", "своих",
+  "тоже", "лишь", "даже", "ведь", "просто",
+]);
+
 export function analyzeChapterCadence(params: {
   readonly rows: ReadonlyArray<CadenceSummaryRow>;
   readonly language: "zh" | "en" | "ru";
@@ -186,6 +196,15 @@ function extractTitleTokens(title: string, language: "zh" | "en" | "ru"): string
       words
         .map((word) => word.toLowerCase())
         .filter((word) => !ENGLISH_STOP_WORDS.has(word)),
+    )];
+  }
+
+  if (language === "ru") {
+    const words = title.match(/[\p{L}]{4,}/gu) ?? [];
+    return [...new Set(
+      words
+        .map((word) => word.toLocaleLowerCase("ru-RU"))
+        .filter((word) => !RUSSIAN_STOP_WORDS.has(word)),
     )];
   }
 

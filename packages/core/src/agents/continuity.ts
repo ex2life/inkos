@@ -78,7 +78,7 @@ const DIMENSION_LABELS: Record<number, { readonly zh: string; readonly en: strin
 };
 
 function containsChinese(text: string): boolean {
-  return /[\u4e00-\u9fff]/u.test(text);
+  return /[一-鿿]/u.test(text);
 }
 
 function resolveGenreLabel(genreId: string, profileName: string, language: PromptLanguage): string {
@@ -146,59 +146,100 @@ function buildDimensionNote(
   }
 
   if (id === 1 && fanficMode === "ooc") {
-    return language === "en"
-      ? "In OOC mode, personality drift can be intentional; record only, do not fail. Evaluate against the character dossiers in fanfic_canon.md."
-      : "OOC模式下角色可偏离性格底色，此维度仅记录不判定失败。参照 fanfic_canon.md 角色档案评估偏离程度。";
+    if (language === "en") {
+      return "In OOC mode, personality drift can be intentional; record only, do not fail. Evaluate against the character dossiers in fanfic_canon.md.";
+    }
+    if (language === "ru") {
+      return "В режиме OOC отклонение от характерного ядра может быть намеренным; только фиксируем, главу не валим. Степень отклонения оцениваем по карточкам персонажей в fanfic_canon.md.";
+    }
+    return "OOC模式下角色可偏离性格底色，此维度仅记录不判定失败。参照 fanfic_canon.md 角色档案评估偏离程度。";
   }
 
   if (id === 1 && fanficMode === "canon") {
-    return language === "en"
-      ? "Canon-faithful fanfic: characters must stay close to their original personality core. Evaluate against fanfic_canon.md character dossiers."
-      : "原作向同人：角色必须严格遵守性格底色。参照 fanfic_canon.md 角色档案中的性格底色和行为模式。";
+    if (language === "en") {
+      return "Canon-faithful fanfic: characters must stay close to their original personality core. Evaluate against fanfic_canon.md character dossiers.";
+    }
+    if (language === "ru") {
+      return "Каноничный фанфик: персонажи обязаны держаться характерного ядра первоисточника. Сверяемся с карточками персонажей в fanfic_canon.md — характер, манера речи, паттерны поведения.";
+    }
+    return "原作向同人：角色必须严格遵守性格底色。参照 fanfic_canon.md 角色档案中的性格底色和行为模式。";
   }
 
   if (id === 10 && words.length > 0) {
-    return language === "en"
-      ? `Fatigue words: ${words.join(", ")}. Also check AI tell markers (仿佛/不禁/宛如/竟然/忽然/猛地); warn when any appears more than once per 3,000 words.`
-      : `高疲劳词：${words.join("、")}。同时检查AI标记词（仿佛/不禁/宛如/竟然/忽然/猛地）密度，每3000字超过1次即warning`;
+    if (language === "en") {
+      return `Fatigue words: ${words.join(", ")}. Also check AI tell markers (仿佛/不禁/宛如/竟然/忽然/猛地); warn when any appears more than once per 3,000 words.`;
+    }
+    if (language === "ru") {
+      return `Слова-усталости: ${words.join(", ")}. Дополнительно отслеживаем характерные AI-маркеры (словно / невольно / будто / неожиданно / внезапно / резко) — warning, если любой встречается чаще одного раза на 3000 слов.`;
+    }
+    return `高疲劳词：${words.join("、")}。同时检查AI标记词（仿佛/不禁/宛如/竟然/忽然/猛地）密度，每3000字超过1次即warning`;
   }
 
   if (id === 15 && gp.satisfactionTypes.length > 0) {
-    return language === "en"
-      ? `Payoff types: ${gp.satisfactionTypes.join(", ")}`
-      : `爽点类型：${gp.satisfactionTypes.join("、")}`;
+    if (language === "en") {
+      return `Payoff types: ${gp.satisfactionTypes.join(", ")}`;
+    }
+    if (language === "ru") {
+      return `Типы катарсиса/выплаты: ${gp.satisfactionTypes.join(", ")}`;
+    }
+    return `爽点类型：${gp.satisfactionTypes.join("、")}`;
   }
 
   if (id === 12 && bookRules?.eraConstraints) {
     const era = bookRules.eraConstraints;
     const parts = [era.period, era.region].filter(Boolean);
     if (parts.length > 0) {
-      return language === "en"
-        ? `Era: ${parts.join(", ")}`
-        : `年代：${parts.join("，")}`;
+      if (language === "en") {
+        return `Era: ${parts.join(", ")}`;
+      }
+      if (language === "ru") {
+        return `Эпоха: ${parts.join(", ")}`;
+      }
+      return `年代：${parts.join("，")}`;
     }
   }
 
   // v10: Enhanced dimension notes with writing methodology awareness
   if (id === 7) {
-    return language === "en"
-      ? "Check pacing rhythm: Do the recent 3-5 chapters form a complete mini-goal cycle (build-up → escalation → climax → aftermath)? If 5+ consecutive chapters pass without a climax (payoff/reward/reversal), flag as pacing stagnation. If the previous chapter was a climax/big reversal, does this chapter show change (relationships shifted, status changed, costs paid)? If it jumps straight to new build-up without showing impact, flag as 'post-climax impact missing'. Daily/transition scenes must carry at least one task: plant a hook, advance a relationship, set up contrast, or prepare the next cycle."
-      : "检查节奏波形：最近 3-5 章是否形成了完整的「蓄压→升级→爆发→后效」周期？如果连续 5 章没有爆发（兑现/回报/翻转），标记为节奏停滞。如果上一章是爆发/高潮/大反转，本章是否写出了改变？如果直接跳到新蓄压而没有展示前一波爆发的影响，标记为「高潮后影响缺失」。非冲突章节中的日常/过渡/对话段落，是否至少承担了一项任务：埋伏笔、推关系、建立反差、准备下一轮蓄压。纯水日常标记为流水账风险。";
+    if (language === "en") {
+      return "Check pacing rhythm: Do the recent 3-5 chapters form a complete mini-goal cycle (build-up → escalation → climax → aftermath)? If 5+ consecutive chapters pass without a climax (payoff/reward/reversal), flag as pacing stagnation. If the previous chapter was a climax/big reversal, does this chapter show change (relationships shifted, status changed, costs paid)? If it jumps straight to new build-up without showing impact, flag as 'post-climax impact missing'. Daily/transition scenes must carry at least one task: plant a hook, advance a relationship, set up contrast, or prepare the next cycle.";
+    }
+    if (language === "ru") {
+      return "Проверяем волну темпа: образуют ли последние 3-5 глав законченный микроцикл (нагнетание → эскалация → кульминация → последствия)? Если 5+ глав подряд проходят без кульминации (выплата / награда / разворот) — фиксируем застой темпа. Если предыдущая глава была кульминацией или крупным разворотом, показывает ли текущая глава изменение (сместились отношения, изменился статус, оплачена цена)? Если автор сразу прыгает в новое нагнетание, не показав последствий, — помечаем как «отсутствие постэффекта кульминации». Бытовые / переходные сцены обязаны нести хотя бы одну задачу: заложить крючок, продвинуть отношения, выстроить контраст или подготовить следующий цикл. Чистая «вода» без задачи — риск перечня событий.";
+    }
+    return "检查节奏波形：最近 3-5 章是否形成了完整的「蓄压→升级→爆发→后效」周期？如果连续 5 章没有爆发（兑现/回报/翻转），标记为节奏停滞。如果上一章是爆发/高潮/大反转，本章是否写出了改变？如果直接跳到新蓄压而没有展示前一波爆发的影响，标记为「高潮后影响缺失」。非冲突章节中的日常/过渡/对话段落，是否至少承担了一项任务：埋伏笔、推关系、建立反差、准备下一轮蓄压。纯水日常标记为流水账风险。";
   }
 
   if (id === 15) {
-    const base = gp.satisfactionTypes.length > 0
-      ? (language === "en" ? `Payoff types: ${gp.satisfactionTypes.join(", ")}. ` : `爽点类型：${gp.satisfactionTypes.join("、")}。`)
-      : "";
-    return language === "en"
-      ? `${base}Check desire engine: Has the chapter created an emotional gap (reader wants release) OR delivered a payoff that exceeds expectations? A payoff that only satisfies 70% of built-up anticipation counts as diluted. If this chapter is in the aftermath phase of a mini-goal cycle, verify that consequences are shown — not just emotional reactions, but concrete changes to status, relationships, or resources.`
-      : `${base}检查欲望驱动：本章是否制造了情绪缺口（读者渴望释放）或完成了超出预期的兑现？只满足读者70%期待的兑现等于爽点虚化。如果本章处于小目标周期的后效阶段，检查是否展示了具体改变——不只是情绪反应，而是地位、关系或资源的实际变化。`;
+    let base: string;
+    if (gp.satisfactionTypes.length > 0) {
+      if (language === "en") {
+        base = `Payoff types: ${gp.satisfactionTypes.join(", ")}. `;
+      } else if (language === "ru") {
+        base = `Типы катарсиса/выплаты: ${gp.satisfactionTypes.join(", ")}. `;
+      } else {
+        base = `爽点类型：${gp.satisfactionTypes.join("、")}。`;
+      }
+    } else {
+      base = "";
+    }
+    if (language === "en") {
+      return `${base}Check desire engine: Has the chapter created an emotional gap (reader wants release) OR delivered a payoff that exceeds expectations? A payoff that only satisfies 70% of built-up anticipation counts as diluted. If this chapter is in the aftermath phase of a mini-goal cycle, verify that consequences are shown — not just emotional reactions, but concrete changes to status, relationships, or resources.`;
+    }
+    if (language === "ru") {
+      return `${base}Проверяем «двигатель желания»: создала ли глава эмоциональный зазор (читатель жаждет разрядки) ИЛИ выдала выплату, превосходящую ожидания? Выплата, которая закрывает лишь 70% накопленного ожидания, считается размытой. Если глава находится в фазе последствий микроцикла — проверяем, показаны ли конкретные следствия: не только эмоциональные реакции, а реальные сдвиги в статусе, отношениях или ресурсах.`;
+    }
+    return `${base}检查欲望驱动：本章是否制造了情绪缺口（读者渴望释放）或完成了超出预期的兑现？只满足读者70%期待的兑现等于爽点虚化。如果本章处于小目标周期的后效阶段，检查是否展示了具体改变——不只是情绪反应，而是地位、关系或资源的实际变化。`;
   }
 
   if (id === 25) {
-    return language === "en"
-      ? "Cross-check character behavior against the 3-question test: (1) Why does the character do this? (2) Does it match their established profile? (3) Would a reader who only read prior chapters find it jarring? Also check if character's emotional state progresses or stagnates."
-      : "人设三问检查：(1)角色为什么这么做？(2)符合之前建立的人设吗？(3)只看过前面章节的读者会觉得突兀吗？同时检查角色情绪弧线是否在推进还是停滞。";
+    if (language === "en") {
+      return "Cross-check character behavior against the 3-question test: (1) Why does the character do this? (2) Does it match their established profile? (3) Would a reader who only read prior chapters find it jarring? Also check if character's emotional state progresses or stagnates.";
+    }
+    if (language === "ru") {
+      return "Проверяем поведение персонажа по тесту трёх вопросов: (1) Зачем персонаж это делает? (2) Соответствует ли это уже выстроенному образу? (3) Не покажется ли читателю, прочитавшему только предыдущие главы, что это «из ниоткуда»? Параллельно сверяем, развивается ли эмоциональная линия персонажа или топчется на месте.";
+    }
+    return "人设三问检查：(1)角色为什么这么做？(2)符合之前建立的人设吗？(3)只看过前面章节的读者会觉得突兀吗？同时检查角色情绪弧线是否在推进还是停滞。";
   }
 
   switch (id) {
@@ -208,8 +249,8 @@ function buildDimensionNote(
       // debt escalation. The ledger's status column carries "过期 (距=…/半衰=…)"
       // and "受阻于 …" markers emitted by the stale/blocked detector; this
       // dimension tells the reviewer how to escalate them.
-      return language === "en"
-        ? `Hook-debt escalation (Phase 7 + hotfixes 2/3). Read the pending_hooks.md ledger and escalate based on the stale / blocked / core_hook / depends_on / promoted columns, NOT only on "undelivered hook present":
+      if (language === "en") {
+        return `Hook-debt escalation (Phase 7 + hotfixes 2/3). Read the pending_hooks.md ledger and escalate based on the stale / blocked / core_hook / depends_on / promoted columns, NOT only on "undelivered hook present":
 
 • Critical severity only applies to hooks with promoted=true in the ledger. A stale/blocked non-promoted hook stays at info — the promotion flag is the gate that keeps reviewer noise down, because architect-seed emits many non-load-bearing seeds.
 • A promoted core_hook=true hook that has been stale for over 10 chapters → escalate from warning to critical. The book has only 3-7 core hooks; letting one drift that long is the lead symptom of narrative rot (cf. new.txt L1569).
@@ -217,8 +258,20 @@ function buildDimensionNote(
 • At volume end (final chapter of any volume per volume_map) a promoted core_hook that is still open or stale without explicit "carried over to volume N+1" planning → critical.
 • Any non-promoted stale hook → info-level log; do not fail the chapter on it, but note it so the planner can schedule cleanup.
 
-Quote the exact hook_id in description and include the stale / blocked marker text verbatim. Structure check only — do not judge hook prose quality.`
-        : `Phase 7 hook-debt 升级规则（含 hotfix 2/3）。阅读 pending_hooks.md 伏笔池时不要只看"有没有悬而未决的伏笔"，要读状态列中的 stale / blocked 标记、core_hook 列、depends_on 列、以及升级列：
+Quote the exact hook_id in description and include the stale / blocked marker text verbatim. Structure check only — do not judge hook prose quality.`;
+      }
+      if (language === "ru") {
+        return `Эскалация долга по крючкам (Phase 7 + hotfix 2/3). Читаем журнал pending_hooks.md и расставляем уровни по колонкам stale / blocked / core_hook / depends_on / promoted, а НЕ просто по факту «крючок не закрыт»:
+
+• Уровень critical применяется только к крючкам, у которых promoted=true. Stale/blocked крючок без promoted остаётся на info — флаг promoted работает как фильтр шума, потому что фаза architect-seed порождает много несущих нагрузки нет.
+• Если у крючка promoted=true и core_hook=true, он находится в статусе stale больше 10 глав → поднимаем с warning до critical. В книге всего 3-7 ключевых крючков; дрейф любого из них на такой срок — главный симптом «слива» сюжета (ср. new.txt L1569).
+• Если у promoted-крючка в ячейке статуса стоит «blocked on X (blocked Y chapters)» и Y >= 6 → warning. Токен «blocked Y chapters» берём из журнала буквально, не угадываем. В описании указываем hook_id вышестоящего крючка, чтобы planner мог проложить путь разрешения.
+• На стыке томов (последняя глава тома по volume_map) promoted-крючок с core_hook=true, который остаётся open или stale без явного плана «перенесён в том N+1», → critical.
+• Любой не promoted stale крючок → info-запись; главу из-за него не валим, но фиксируем, чтобы planner запланировал зачистку.
+
+В description обязательно цитируем точный hook_id и копируем текст stale / blocked маркера дословно. Это только структурная проверка — литературное качество подачи крючка не оцениваем.`;
+      }
+      return `Phase 7 hook-debt 升级规则（含 hotfix 2/3）。阅读 pending_hooks.md 伏笔池时不要只看"有没有悬而未决的伏笔"，要读状态列中的 stale / blocked 标记、core_hook 列、depends_on 列、以及升级列：
 
 • critical 级别仅适用于升级=是（promoted=true）的伏笔。非升级的 stale/blocked 伏笔一律保持 info——升级标志是降噪的开关，因为架构师阶段会产出大量非承重的伏笔种子。
 • 升级=是且 core_hook=是 的伏笔过期超过 10 章未回收 → warning 升级为 critical。全书只有 3-7 条核心伏笔，任何一条漂移这么久都是烂尾前兆（对应 new.txt L1569"严禁烂尾逻辑"）。
@@ -228,59 +281,109 @@ Quote the exact hook_id in description and include the stale / blocked marker te
 
 description 中要明确引用 hook_id，并把状态列中 stale / blocked 的原文标记字面抄进去。本维度只审结构，不评价伏笔文笔。`;
     case 19:
-      return language === "en"
-        ? "Check whether POV shifts are signaled clearly and stay consistent with the configured viewpoint."
-        : "检查视角切换是否有过渡、是否与设定视角一致";
+      if (language === "en") {
+        return "Check whether POV shifts are signaled clearly and stay consistent with the configured viewpoint.";
+      }
+      if (language === "ru") {
+        return "Проверяем, что переходы точки зрения чётко обозначены и не расходятся с заявленной POV-схемой книги.";
+      }
+      return "检查视角切换是否有过渡、是否与设定视角一致";
     case 24:
-      return language === "en"
-        ? "Cross-check subplot_board and chapter_summaries: flag any subplot that stays dormant long enough to feel abandoned, or a recent run where every subplot is only restated instead of genuinely moving."
-        : "对照 subplot_board 和 chapter_summaries：标记那些沉寂到接近被遗忘的支线，或近期连续只被重复提及、没有真实推进的支线。";
+      if (language === "en") {
+        return "Cross-check subplot_board and chapter_summaries: flag any subplot that stays dormant long enough to feel abandoned, or a recent run where every subplot is only restated instead of genuinely moving.";
+      }
+      if (language === "ru") {
+        return "Сверяем subplot_board и chapter_summaries: помечаем любую побочную линию, которая молчит достаточно долго, чтобы читатель счёл её брошенной, либо отрезок, где побочки только упоминаются заново, а не реально продвигаются.";
+      }
+      return "对照 subplot_board 和 chapter_summaries：标记那些沉寂到接近被遗忘的支线，或近期连续只被重复提及、没有真实推进的支线。";
     case 25:
-      return language === "en"
-        ? "Cross-check emotional_arcs and chapter_summaries: flag any major character whose emotional line holds one pressure shape across a run instead of taking new pressure, release, reversal, or reinterpretation. Distinguish unchanged circumstances from unchanged inner movement."
-        : "对照 emotional_arcs 和 chapter_summaries：标记主要角色在一段时间内始终停留在同一种情绪压力形态、没有新压力、释放、转折或重估的情况。注意区分'处境未变'和'内心未变'。";
+      if (language === "en") {
+        return "Cross-check emotional_arcs and chapter_summaries: flag any major character whose emotional line holds one pressure shape across a run instead of taking new pressure, release, reversal, or reinterpretation. Distinguish unchanged circumstances from unchanged inner movement.";
+      }
+      if (language === "ru") {
+        return "Сверяем emotional_arcs и chapter_summaries: помечаем главных персонажей, чья эмоциональная линия на протяжении отрезка держится в одной форме давления — без нового нажима, разрядки, разворота или переосмысления. Чётко отделяем «обстоятельства не изменились» от «внутренне ничего не сдвинулось».";
+      }
+      return "对照 emotional_arcs 和 chapter_summaries：标记主要角色在一段时间内始终停留在同一种情绪压力形态、没有新压力、释放、转折或重估的情况。注意区分'处境未变'和'内心未变'。";
     case 26:
-      return language === "en"
-        ? "Cross-check chapter_summaries for chapter-type distribution: warn when the recent sequence stays in the same mode long enough to flatten rhythm, or when payoff / release beats disappear for too long. Explicitly list the recent type sequence."
-        : "对照 chapter_summaries 的章节类型分布：当近期章节长时间停留在同一种模式、把节奏压平，或回收/释放/高潮章节缺席过久时给出 warning。请明确列出最近章节的类型序列。";
+      if (language === "en") {
+        return "Cross-check chapter_summaries for chapter-type distribution: warn when the recent sequence stays in the same mode long enough to flatten rhythm, or when payoff / release beats disappear for too long. Explicitly list the recent type sequence.";
+      }
+      if (language === "ru") {
+        return "Сверяем распределение типов глав в chapter_summaries: выдаём warning, когда недавняя последовательность достаточно долго держится в одном режиме и темп уплощается, либо когда выплата / разрядка / кульминация отсутствуют слишком долго. В описании явно выписываем последовательность типов последних глав.";
+      }
+      return "对照 chapter_summaries 的章节类型分布：当近期章节长时间停留在同一种模式、把节奏压平，或回收/释放/高潮章节缺席过久时给出 warning。请明确列出最近章节的类型序列。";
     case 28:
-      return language === "en"
-        ? "Check whether spinoff events contradict the mainline canon constraints."
-        : "检查番外事件是否与正典约束表矛盾";
+      if (language === "en") {
+        return "Check whether spinoff events contradict the mainline canon constraints.";
+      }
+      if (language === "ru") {
+        return "Проверяем, не противоречат ли события спин-оффа таблице ограничений основного канона.";
+      }
+      return "检查番外事件是否与正典约束表矛盾";
     case 29:
-      return language === "en"
-        ? "Check whether characters reference information that should only be revealed after the divergence point (see the information-boundary table)."
-        : "检查角色是否引用了分歧点之后才揭示的信息（参照信息边界表）";
+      if (language === "en") {
+        return "Check whether characters reference information that should only be revealed after the divergence point (see the information-boundary table).";
+      }
+      if (language === "ru") {
+        return "Проверяем, не ссылаются ли персонажи на информацию, которая должна раскрываться только после точки расхождения (см. таблицу границ информации).";
+      }
+      return "检查角色是否引用了分歧点之后才揭示的信息（参照信息边界表）";
     case 30:
-      return language === "en"
-        ? "Check whether the spinoff violates mainline world rules (power system, geography, factions)."
-        : "检查番外是否违反正传世界规则（力量体系、地理、阵营）";
+      if (language === "en") {
+        return "Check whether the spinoff violates mainline world rules (power system, geography, factions).";
+      }
+      if (language === "ru") {
+        return "Проверяем, не нарушает ли спин-офф правила мира основной серии (силовая система, география, фракции).";
+      }
+      return "检查番外是否违反正传世界规则（力量体系、地理、阵营）";
     case 31:
-      return language === "en"
-        ? "Check whether the spinoff resolves mainline hooks without authorization (warning level)."
-        : "检查番外是否越权回收正传伏笔（warning级别）";
+      if (language === "en") {
+        return "Check whether the spinoff resolves mainline hooks without authorization (warning level).";
+      }
+      if (language === "ru") {
+        return "Проверяем, не закрывает ли спин-офф крючки основной серии без санкции (уровень warning).";
+      }
+      return "检查番外是否越权回收正传伏笔（warning级别）";
     case 32:
-      return language === "en"
-        ? "Check whether the ending renews curiosity, whether promised payoffs are landing on the cadence their hooks imply, whether pressure gets any release, and whether reader expectation gaps are accumulating faster than they are being satisfied. If a climax just occurred, check whether the aftermath chapters show concrete change before starting a new cycle."
-        : "检查：章尾是否重新点燃好奇心，已经承诺的回收是否按伏笔自身节奏落地，压力是否得到释放，读者期待缺口是在持续累积还是在被满足。如果刚经历高潮，检查后效章节是否在开启新周期前展示了具体改变。";
+      if (language === "en") {
+        return "Check whether the ending renews curiosity, whether promised payoffs are landing on the cadence their hooks imply, whether pressure gets any release, and whether reader expectation gaps are accumulating faster than they are being satisfied. If a climax just occurred, check whether the aftermath chapters show concrete change before starting a new cycle.";
+      }
+      if (language === "ru") {
+        return "Проверяем: подогревает ли финал главы любопытство заново, приходят ли обещанные выплаты в темпе, заданном их крючками, получает ли давление хоть какую-то разрядку, и не накапливаются ли разрывы между ожиданиями читателя и их удовлетворением быстрее, чем закрываются. Если только что прошла кульминация — проверяем, показывают ли главы-последствия конкретные изменения до старта нового цикла.";
+      }
+      return "检查：章尾是否重新点燃好奇心，已经承诺的回收是否按伏笔自身节奏落地，压力是否得到释放，读者期待缺口是在持续累积还是在被满足。如果刚经历高潮，检查后效章节是否在开启新周期前展示了具体改变。";
     case 33:
-      return language === "en"
-        ? "Cross-check the chapter_memo provided with the chapter. Does the final prose deliver the memo's goal and leave a visible trace for every one of the 7 sections it contains (tasks, pay-offs / held-back cards, daily/transition function map, three-question check, end-of-chapter concrete changes, hard-don'ts)? Missing or contradicted sections -> critical. Note: a sparse memo (breather chapter, goal + skeleton body only) is legitimate — only flag drift against sections that the memo actually populates. Never flag the memo itself for being sparse."
-        : "对照随章提供的 chapter_memo。成稿是否兑现了 memo 中的 goal，并在 7 段正文（当前任务 / 该兑现·暂不掀 / 日常过渡功能 / 关键抉择三连问 / 章尾必须发生的改变 / 不要做 等）中留下可见落地痕迹？任何段落缺失或被写反 → critical。提醒：稀疏 memo 合法（喘息章 memo 可以只有 goal + 骨架 body），只检查 memo 实际写出的段落，不能因为 memo 稀疏就判 incomplete。";
+      if (language === "en") {
+        return "Cross-check the chapter_memo provided with the chapter. Does the final prose deliver the memo's goal and leave a visible trace for every one of the 7 sections it contains (tasks, pay-offs / held-back cards, daily/transition function map, three-question check, end-of-chapter concrete changes, hard-don'ts)? Missing or contradicted sections -> critical. Note: a sparse memo (breather chapter, goal + skeleton body only) is legitimate — only flag drift against sections that the memo actually populates. Never flag the memo itself for being sparse.";
+      }
+      if (language === "ru") {
+        return "Сверяем готовый текст с приложенной к главе chapter_memo. Закрыл ли финальный текст goal из памятки и оставил ли видимый след по каждому из 7 разделов памятки (## 当前任务 / ## 该兑现·暂不掀 / ## 日常过渡功能 / ## 关键抉择三连问 / ## 章尾必须发生的改变 / ## 不要做 и т. д.)? Пропущенный или вывернутый наизнанку раздел → critical. Важно: разрежённая памятка (глава-передышка, только goal + скелет body) — легитимна; проверяем дрейф только по тем разделам, которые памятка реально заполнила. Сама по себе разрежённость памятки не является нарушением.";
+      }
+      return "对照随章提供的 chapter_memo。成稿是否兑现了 memo 中的 goal，并在 7 段正文（当前任务 / 该兑现·暂不掀 / 日常过渡功能 / 关键抉择三连问 / 章尾必须发生的改变 / 不要做 等）中留下可见落地痕迹？任何段落缺失或被写反 → critical。提醒：稀疏 memo 合法（喘息章 memo 可以只有 goal + 骨架 body），只检查 memo 实际写出的段落，不能因为 memo 稀疏就判 incomplete。";
     case 34:
     case 35:
     case 36:
     case 37: {
       if (!fanficConfig) return "";
       const severity = fanficConfig.severityOverrides.get(id) ?? "warning";
-      const baseNote = language === "en"
-        ? {
-            34: "Check whether dialogue tics, speaking style, and behavior remain consistent with the character dossiers in fanfic_canon.md. Deviations need clear situational motivation.",
-            35: "Check whether the chapter violates world rules documented in fanfic_canon.md (geography, power system, faction relations).",
-            36: "Check whether relationship beats remain plausible and aligned with, or meaningfully develop from, the key relationships documented in fanfic_canon.md.",
-            37: "Check whether the chapter contradicts the key event timeline in fanfic_canon.md.",
-          }[id]
-        : FANFIC_DIMENSIONS.find((dimension) => dimension.id === id)?.baseNote;
+      let baseNote: string | undefined;
+      if (language === "en") {
+        baseNote = {
+          34: "Check whether dialogue tics, speaking style, and behavior remain consistent with the character dossiers in fanfic_canon.md. Deviations need clear situational motivation.",
+          35: "Check whether the chapter violates world rules documented in fanfic_canon.md (geography, power system, faction relations).",
+          36: "Check whether relationship beats remain plausible and aligned with, or meaningfully develop from, the key relationships documented in fanfic_canon.md.",
+          37: "Check whether the chapter contradicts the key event timeline in fanfic_canon.md.",
+        }[id];
+      } else if (language === "ru") {
+        baseNote = {
+          34: "Проверяем, что речевые тики, манера говорить и паттерны поведения персонажа согласуются с карточкой из fanfic_canon.md. Любое отклонение должно иметь чёткую ситуативную мотивацию.",
+          35: "Проверяем, не нарушает ли глава правила мира, зафиксированные в fanfic_canon.md (география, силовая система, отношения фракций).",
+          36: "Проверяем, что динамика отношений правдоподобна и либо совпадает с ключевыми связями из fanfic_canon.md, либо развивает их осмысленно.",
+          37: "Проверяем, не противоречит ли глава ключевой хронологии событий из fanfic_canon.md.",
+        }[id];
+      } else {
+        baseNote = FANFIC_DIMENSIONS.find((dimension) => dimension.id === id)?.baseNote;
+      }
 
       return baseNote
         ? `${baseNote} ${formatFanficSeverityNote(severity, language)}`
@@ -443,27 +546,39 @@ export class ContinuityAuditor extends BaseAgent {
 
     const resolvedLanguage = bookLanguage ?? gp.language;
     const isEnglish = resolvedLanguage === "en";
+    const isRussian = resolvedLanguage === "ru";
     const fanficMode = hasFanficCanon ? (bookRules?.fanficMode as FanficMode | undefined) : undefined;
     const dimensions = buildDimensionList(gp, bookRules, resolvedLanguage, hasParentCanon, fanficMode);
     const dimList = dimensions
-      .map((d) => `${d.id}. ${d.name}${d.note ? (isEnglish ? ` (${d.note})` : `（${d.note}）`) : ""}`)
+      .map((d) => `${d.id}. ${d.name}${d.note ? (isEnglish || isRussian ? ` (${d.note})` : `（${d.note}）`) : ""}`)
       .join("\n");
     const genreLabel = resolveGenreLabel(genreId, gp.name, resolvedLanguage);
 
-    const protagonistBlock = bookRules?.protagonist
-      ? isEnglish
-        ? `\n\nProtagonist lock: ${bookRules.protagonist.name}; personality locks: ${joinLocalized(bookRules.protagonist.personalityLock, resolvedLanguage)}; behavioral constraints: ${joinLocalized(bookRules.protagonist.behavioralConstraints, resolvedLanguage)}.`
-        : `\n主角人设锁定：${bookRules.protagonist.name}，${bookRules.protagonist.personalityLock.join("、")}，行为约束：${bookRules.protagonist.behavioralConstraints.join("、")}`
-      : "";
+    let protagonistBlock = "";
+    if (bookRules?.protagonist) {
+      if (isEnglish) {
+        protagonistBlock = `\n\nProtagonist lock: ${bookRules.protagonist.name}; personality locks: ${joinLocalized(bookRules.protagonist.personalityLock, resolvedLanguage)}; behavioral constraints: ${joinLocalized(bookRules.protagonist.behavioralConstraints, resolvedLanguage)}.`;
+      } else if (isRussian) {
+        protagonistBlock = `\n\nЗакреплённый протагонист: ${bookRules.protagonist.name}; характерные замки: ${joinLocalized(bookRules.protagonist.personalityLock, resolvedLanguage)}; поведенческие ограничения: ${joinLocalized(bookRules.protagonist.behavioralConstraints, resolvedLanguage)}.`;
+      } else {
+        protagonistBlock = `\n主角人设锁定：${bookRules.protagonist.name}，${bookRules.protagonist.personalityLock.join("、")}，行为约束：${bookRules.protagonist.behavioralConstraints.join("、")}`;
+      }
+    }
 
-    const searchNote = gp.eraResearch
-      ? isEnglish
-        ? "\n\nYou have web-search capability (search_web / fetch_url). For real-world eras, people, events, geography, or policies, you must verify with search_web instead of relying on memory. Cross-check at least 2 sources."
-        : "\n\n你有联网搜索能力（search_web / fetch_url）。对于涉及真实年代、人物、事件、地理、政策的内容，你必须用search_web核实，不可凭记忆判断。至少对比2个来源交叉验证。"
-      : "";
+    let searchNote = "";
+    if (gp.eraResearch) {
+      if (isEnglish) {
+        searchNote = "\n\nYou have web-search capability (search_web / fetch_url). For real-world eras, people, events, geography, or policies, you must verify with search_web instead of relying on memory. Cross-check at least 2 sources.";
+      } else if (isRussian) {
+        searchNote = "\n\nУ тебя есть инструменты веб-поиска (search_web / fetch_url). По всему, что касается реальных эпох, людей, событий, географии и политики, ты обязан сверяться через search_web, а не полагаться на память. Перепроверяй минимум по двум независимым источникам.";
+      } else {
+        searchNote = "\n\n你有联网搜索能力（search_web / fetch_url）。对于涉及真实年代、人物、事件、地理、政策的内容，你必须用search_web核实，不可凭记忆判断。至少对比2个来源交叉验证。";
+      }
+    }
 
-    const systemPrompt = isEnglish
-      ? `You are a strict ${genreLabel} web-fiction structural editor. Audit the chapter for completion and structure, not for prose craft. ALL OUTPUT MUST BE IN ENGLISH.${protagonistBlock}${searchNote}
+    let systemPrompt: string;
+    if (isEnglish) {
+      systemPrompt = `You are a strict ${genreLabel} web-fiction structural editor. Audit the chapter for completion and structure, not for prose craft. ALL OUTPUT MUST BE IN ENGLISH.${protagonistBlock}${searchNote}
 
 ## Reviewer Scope (hard constraints)
 
@@ -499,8 +614,47 @@ overall_score calibration:
 - 75-84: Noticeable problems but the story backbone holds, needs revision but not urgent
 - 65-74: Multiple issues hurt the reading experience, pacing or continuity has gaps
 - < 65: Structural breakdown, needs major rewrite
-Score holistically — do not let a single minor issue tank the score.`
-      : `你是一位严格的${gp.name}网络小说结构审稿编辑。你只审完成度 + 结构，不审文笔。${protagonistBlock}${searchNote}
+Score holistically — do not let a single minor issue tank the score.`;
+    } else if (isRussian) {
+      systemPrompt = `Ты — строгий структурный редактор художественной прозы (${genreLabel}). Ты проверяешь главу на полноту и структуру, а не на качество письма. ВЕСЬ ОТВЕТ ДОЛЖЕН БЫТЬ НА РУССКОМ ЯЗЫКЕ.${protagonistBlock}${searchNote}
+
+## Зона ответственности рецензента (жёсткие ограничения)
+
+Ты проверяешь только полноту и структуру. Твоя задача — решить, выдала ли глава план, сохранила ли характеры и хронологию и сдвинула ли книгу вперёд. Подбор слов, ритм предложений, форма абзаца, пунктуация, образный ряд и прочие поверхностные решения — НЕ к тебе; этим занимается этап Polisher, который идёт после тебя. Если ты замечаешь проблемы уровня прозы, ты можешь зафиксировать их с severity="info" для сведения Polisher, но они не влияют на passed / overall_score и НИКОГДА не могут быть critical.
+
+Ты держишь в голове двенадцать структурных «болевых точек» читателя: затянутое или плоское начало; размытый сеттинг, оторванный от реальности; противоречивая характеристика персонажа; запутанная POV; дрейф или застой основной линии; слабый конфликт без выплаты; потеря контроля над темпом и резкие переходы; несостыковки в характере на дистанции арки; плоские персонажи без контраста; деревянное выражение эмоций и неоправданные скачки в отношениях; разбалансированные «читы» и подарки силы; сеттинг, который так и не приземляется в конкретное действие. Поверх этого работают инженерные измерения из списка ниже (OOC, согласованность хронологии, границы информации, hook-debt, межглавные повторы, лексическая усталость, диапазон длины, усталость заголовков, форма абзаца).
+
+Разрежённая chapter_memo — легитимна. Глава-передышка / последствие / переход может прийти с памяткой, в которой только goal и скелетный body. НЕ помечай такие памятки как incomplete и НЕ штрафуй главу за отсутствие материала по разделам, которые памятка сама не заполнила. Дрейф меряем только относительно того, что памятка реально написала.
+
+Измерения проверки:
+${dimList}
+
+Формат вывода ДОЛЖЕН быть JSON:
+{
+  "passed": true/false,
+  "overall_score": 0-100,
+  "issues": [
+    {
+      "severity": "critical|warning|info",
+      "category": "название измерения",
+      "description": "конкретное описание проблемы",
+      "suggestion": "предложение по правке"
+    }
+  ],
+  "summary": "одно предложение — итог проверки"
+}
+
+passed=false ТОЛЬКО при наличии issues уровня critical.
+
+Калибровка overall_score:
+- 95-100: можно публиковать как есть, заметных проблем нет
+- 85-94: мелкие шероховатости, но чтение гладкое, читатель не выпадает
+- 75-84: заметные проблемы, но костяк истории держится; правка нужна, но не срочна
+- 65-74: несколько проблем бьют по чтению, есть разрывы в темпе или преемственности
+- < 65: структурный распад, нужна крупная переработка
+Оценивай целостно — не обрушивай балл из-за единственной мелочи.`;
+    } else {
+      systemPrompt = `你是一位严格的${gp.name}网络小说结构审稿编辑。你只审完成度 + 结构，不审文笔。${protagonistBlock}${searchNote}
 
 ## 审稿边界（硬约束）
 
@@ -537,12 +691,18 @@ overall_score 评分校准：
 - 65-74：多处影响阅读体验的问题，节奏或连续性有断裂
 - < 65：结构性问题，需要大幅重写
 综合评分，不要因为单一小问题大幅拉低分数。`;
+    }
 
-    const ledgerBlock = gp.numericalSystem
-      ? isEnglish
-        ? `\n## Resource Ledger\n${ledger}`
-        : `\n## 资源账本\n${ledger}`
-      : "";
+    let ledgerBlock = "";
+    if (gp.numericalSystem) {
+      if (isEnglish) {
+        ledgerBlock = `\n## Resource Ledger\n${ledger}`;
+      } else if (isRussian) {
+        ledgerBlock = `\n## Ресурсный гроссбух\n${ledger}`;
+      } else {
+        ledgerBlock = `\n## 资源账本\n${ledger}`;
+      }
+    }
 
     // Smart context filtering for auditor — same logic as writer
     const bookRulesForFilter = parsedRules?.rules ?? null;
@@ -556,69 +716,126 @@ overall_score 评分校准：
       ? buildGovernedMemoryEvidenceBlocks(options.contextPackage, resolvedLanguage)
       : undefined;
 
-    const hooksBlock = governedMemoryBlocks?.hooksBlock
-      ?? (filteredHooks !== "(文件不存在)"
-        ? isEnglish
-          ? `\n## Pending Hooks\n${filteredHooks}\n`
-          : `\n## 伏笔池\n${filteredHooks}\n`
-        : "");
-    const subplotBlock = filteredSubplots !== "(文件不存在)"
-      ? isEnglish
-        ? `\n## Subplot Board\n${filteredSubplots}\n`
-        : `\n## 支线进度板\n${filteredSubplots}\n`
-      : "";
-    const emotionalBlock = filteredArcs !== "(文件不存在)"
-      ? isEnglish
-        ? `\n## Emotional Arcs\n${filteredArcs}\n`
-        : `\n## 情感弧线\n${filteredArcs}\n`
-      : "";
-    const matrixBlock = filteredMatrix !== "(文件不存在)"
-      ? isEnglish
-        ? `\n## Character Interaction Matrix\n${filteredMatrix}\n`
-        : `\n## 角色交互矩阵\n${filteredMatrix}\n`
-      : "";
-    const summariesBlock = governedMemoryBlocks?.summariesBlock
-      ?? (filteredSummaries !== "(文件不存在)"
-        ? isEnglish
-          ? `\n## Chapter Summaries (for pacing checks)\n${filteredSummaries}\n`
-          : `\n## 章节摘要（用于节奏检查）\n${filteredSummaries}\n`
-        : "");
+    let hooksBlock = "";
+    if (governedMemoryBlocks?.hooksBlock) {
+      hooksBlock = governedMemoryBlocks.hooksBlock;
+    } else if (filteredHooks !== "(文件不存在)") {
+      if (isEnglish) {
+        hooksBlock = `\n## Pending Hooks\n${filteredHooks}\n`;
+      } else if (isRussian) {
+        hooksBlock = `\n## Открытые крючки (pending_hooks)\n${filteredHooks}\n`;
+      } else {
+        hooksBlock = `\n## 伏笔池\n${filteredHooks}\n`;
+      }
+    }
+
+    let subplotBlock = "";
+    if (filteredSubplots !== "(文件不存在)") {
+      if (isEnglish) {
+        subplotBlock = `\n## Subplot Board\n${filteredSubplots}\n`;
+      } else if (isRussian) {
+        subplotBlock = `\n## Доска побочных линий (subplot_board)\n${filteredSubplots}\n`;
+      } else {
+        subplotBlock = `\n## 支线进度板\n${filteredSubplots}\n`;
+      }
+    }
+
+    let emotionalBlock = "";
+    if (filteredArcs !== "(文件不存在)") {
+      if (isEnglish) {
+        emotionalBlock = `\n## Emotional Arcs\n${filteredArcs}\n`;
+      } else if (isRussian) {
+        emotionalBlock = `\n## Эмоциональные арки (emotional_arcs)\n${filteredArcs}\n`;
+      } else {
+        emotionalBlock = `\n## 情感弧线\n${filteredArcs}\n`;
+      }
+    }
+
+    let matrixBlock = "";
+    if (filteredMatrix !== "(文件不存在)") {
+      if (isEnglish) {
+        matrixBlock = `\n## Character Interaction Matrix\n${filteredMatrix}\n`;
+      } else if (isRussian) {
+        matrixBlock = `\n## Матрица взаимодействия персонажей\n${filteredMatrix}\n`;
+      } else {
+        matrixBlock = `\n## 角色交互矩阵\n${filteredMatrix}\n`;
+      }
+    }
+
+    let summariesBlock = "";
+    if (governedMemoryBlocks?.summariesBlock) {
+      summariesBlock = governedMemoryBlocks.summariesBlock;
+    } else if (filteredSummaries !== "(文件不存在)") {
+      if (isEnglish) {
+        summariesBlock = `\n## Chapter Summaries (for pacing checks)\n${filteredSummaries}\n`;
+      } else if (isRussian) {
+        summariesBlock = `\n## Сводки глав (chapter_summaries — для проверки темпа)\n${filteredSummaries}\n`;
+      } else {
+        summariesBlock = `\n## 章节摘要（用于节奏检查）\n${filteredSummaries}\n`;
+      }
+    }
     const volumeSummariesBlock = governedMemoryBlocks?.volumeSummariesBlock ?? "";
 
-    const canonBlock = hasParentCanon
-      ? isEnglish
-        ? `\n## Mainline Canon Reference (for spinoff audit)\n${parentCanon}\n`
-        : `\n## 正传正典参照（番外审查专用）\n${parentCanon}\n`
-      : "";
+    let canonBlock = "";
+    if (hasParentCanon) {
+      if (isEnglish) {
+        canonBlock = `\n## Mainline Canon Reference (for spinoff audit)\n${parentCanon}\n`;
+      } else if (isRussian) {
+        canonBlock = `\n## Канон основной серии (для проверки спин-оффа)\n${parentCanon}\n`;
+      } else {
+        canonBlock = `\n## 正传正典参照（番外审查专用）\n${parentCanon}\n`;
+      }
+    }
 
-    const fanficCanonBlock = hasFanficCanon
-      ? isEnglish
-        ? `\n## Fanfic Canon Reference (for fanfic audit)\n${fanficCanon}\n`
-        : `\n## 同人正典参照（同人审查专用）\n${fanficCanon}\n`
-      : "";
+    let fanficCanonBlock = "";
+    if (hasFanficCanon) {
+      if (isEnglish) {
+        fanficCanonBlock = `\n## Fanfic Canon Reference (for fanfic audit)\n${fanficCanon}\n`;
+      } else if (isRussian) {
+        fanficCanonBlock = `\n## Канон первоисточника (для проверки фанфика)\n${fanficCanon}\n`;
+      } else {
+        fanficCanonBlock = `\n## 同人正典参照（同人审查专用）\n${fanficCanon}\n`;
+      }
+    }
 
-    const memoBlock = options?.chapterMemo
-      ? isEnglish
-        ? `\n## Chapter Memo (for memo drift checks)\nGoal: ${options.chapterMemo.goal}\n\n${options.chapterMemo.body}\n`
-        : `\n## 章节备忘（用于 memo 偏离检测）\ngoal：${options.chapterMemo.goal}\n\n${options.chapterMemo.body}\n`
-      : "";
+    let memoBlock = "";
+    if (options?.chapterMemo) {
+      if (isEnglish) {
+        memoBlock = `\n## Chapter Memo (for memo drift checks)\nGoal: ${options.chapterMemo.goal}\n\n${options.chapterMemo.body}\n`;
+      } else if (isRussian) {
+        memoBlock = `\n## Памятка главы (chapter_memo — для проверки дрейфа)\ngoal: ${options.chapterMemo.goal}\n\n${options.chapterMemo.body}\n`;
+      } else {
+        memoBlock = `\n## 章节备忘（用于 memo 偏离检测）\ngoal：${options.chapterMemo.goal}\n\n${options.chapterMemo.body}\n`;
+      }
+    }
     const reducedControlBlock = options?.chapterIntent && options.contextPackage && options.ruleStack
       ? this.buildReducedControlBlock(options.chapterIntent, options.contextPackage, options.ruleStack, resolvedLanguage)
       : "";
-    const styleGuideBlock = reducedControlBlock.length === 0
-      ? isEnglish
-        ? `\n## Style Guide\n${styleGuide}`
-        : `\n## 文风指南\n${styleGuide}`
-      : "";
+    let styleGuideBlock = "";
+    if (reducedControlBlock.length === 0) {
+      if (isEnglish) {
+        styleGuideBlock = `\n## Style Guide\n${styleGuide}`;
+      } else if (isRussian) {
+        styleGuideBlock = `\n## Стилистический гайд\n${styleGuide}`;
+      } else {
+        styleGuideBlock = `\n## 文风指南\n${styleGuide}`;
+      }
+    }
 
-    const prevChapterBlock = previousChapter
-      ? isEnglish
-        ? `\n## Previous Chapter Full Text (for transition checks)\n${previousChapter}\n`
-        : `\n## 上一章全文（用于衔接检查）\n${previousChapter}\n`
-      : "";
+    let prevChapterBlock = "";
+    if (previousChapter) {
+      if (isEnglish) {
+        prevChapterBlock = `\n## Previous Chapter Full Text (for transition checks)\n${previousChapter}\n`;
+      } else if (isRussian) {
+        prevChapterBlock = `\n## Полный текст предыдущей главы (для проверки стыков)\n${previousChapter}\n`;
+      } else {
+        prevChapterBlock = `\n## 上一章全文（用于衔接检查）\n${previousChapter}\n`;
+      }
+    }
 
-    const userPrompt = isEnglish
-      ? `Review chapter ${chapterNumber}.
+    let userPrompt: string;
+    if (isEnglish) {
+      userPrompt = `Review chapter ${chapterNumber}.
 
 ## Current State Card
 ${currentState}
@@ -626,8 +843,19 @@ ${ledgerBlock}
 ${hooksBlock}${volumeSummariesBlock}${subplotBlock}${emotionalBlock}${matrixBlock}${summariesBlock}${canonBlock}${fanficCanonBlock}${reducedControlBlock}${memoBlock}${prevChapterBlock}${styleGuideBlock}
 
 ## Chapter Content Under Review
-${chapterContent}`
-      : `请审查第${chapterNumber}章。
+${chapterContent}`;
+    } else if (isRussian) {
+      userPrompt = `Проверь главу ${chapterNumber}.
+
+## Карточка текущего состояния
+${currentState}
+${ledgerBlock}
+${hooksBlock}${volumeSummariesBlock}${subplotBlock}${emotionalBlock}${matrixBlock}${summariesBlock}${canonBlock}${fanficCanonBlock}${reducedControlBlock}${memoBlock}${prevChapterBlock}${styleGuideBlock}
+
+## Текст главы на проверку
+${chapterContent}`;
+    } else {
+      userPrompt = `请审查第${chapterNumber}章。
 
 ## 当前状态卡
 ${currentState}
@@ -636,6 +864,7 @@ ${hooksBlock}${volumeSummariesBlock}${subplotBlock}${emotionalBlock}${matrixBloc
 
 ## 待审章节内容
 ${chapterContent}`;
+    }
 
     const chatMessages = [
       { role: "system" as const, content: systemPrompt },
@@ -691,7 +920,7 @@ ${chapterContent}`;
             const issue = JSON.parse(match[0]);
             issues.push({
               severity: issue.severity ?? "warning",
-              category: issue.category ?? (language === "en" ? "Uncategorized" : "未分类"),
+              category: issue.category ?? uncategorizedLabel(language),
               description: issue.description ?? "",
               suggestion: issue.suggestion ?? "",
             });
@@ -711,15 +940,11 @@ ${chapterContent}`;
       passed: false,
       issues: [{
         severity: "critical",
-        category: language === "en" ? "System Error" : "系统错误",
-        description: language === "en"
-          ? "Audit output format was invalid and could not be parsed as JSON."
-          : "审稿输出格式异常，无法解析为 JSON",
-        suggestion: language === "en"
-          ? "The model may not support reliable structured output. Try a stronger model or inspect the API response format."
-          : "可能是模型不支持结构化输出。尝试换一个更大的模型，或检查 API 返回格式。",
+        category: systemErrorLabel(language),
+        description: parseErrorDescription(language),
+        suggestion: parseErrorSuggestion(language),
       }],
-      summary: language === "en" ? "Audit output parsing failed" : "审稿输出解析失败",
+      summary: parseFailureSummary(language),
     };
   }
 
@@ -738,8 +963,8 @@ ${chapterContent}`;
         .join("\n")
       : "- none";
 
-    return language === "en"
-      ? `\n## Chapter Control Inputs (compiled by Planner/Composer)
+    if (language === "en") {
+      return `\n## Chapter Control Inputs (compiled by Planner/Composer)
 ${chapterIntent}
 
 ### Selected Context
@@ -751,8 +976,24 @@ ${selectedContext || "- none"}
 - Diagnostic rules: ${ruleStack.sections.diagnostic.join(", ") || "(none)"}
 
 ### Active Overrides
-${overrides}\n`
-      : `\n## 本章控制输入（由 Planner/Composer 编译）
+${overrides}\n`;
+    }
+    if (language === "ru") {
+      return `\n## Управляющие входы главы (собраны Planner/Composer)
+${chapterIntent}
+
+### Отобранный контекст
+${selectedContext || "- none"}
+
+### Стек правил
+- Жёсткие ограждения: ${ruleStack.sections.hard.join(", ") || "(нет)"}
+- Мягкие ограничения: ${ruleStack.sections.soft.join(", ") || "(нет)"}
+- Диагностические правила: ${ruleStack.sections.diagnostic.join(", ") || "(нет)"}
+
+### Активные переопределения
+${overrides}\n`;
+    }
+    return `\n## 本章控制输入（由 Planner/Composer 编译）
 ${chapterIntent}
 
 ### 已选上下文
@@ -792,7 +1033,7 @@ ${overrides}\n`;
         issues: Array.isArray(parsed.issues)
           ? parsed.issues.map((i: Record<string, unknown>) => ({
               severity: (i.severity as string) ?? "warning",
-              category: (i.category as string) ?? (language === "en" ? "Uncategorized" : "未分类"),
+              category: (i.category as string) ?? uncategorizedLabel(language),
               description: (i.description as string) ?? "",
               suggestion: (i.suggestion as string) ?? "",
             }))
@@ -826,4 +1067,34 @@ ${overrides}\n`;
       return "(文件不存在)";
     }
   }
+}
+
+function uncategorizedLabel(language: PromptLanguage): string {
+  if (language === "en") return "Uncategorized";
+  if (language === "ru") return "Без категории";
+  return "未分类";
+}
+
+function systemErrorLabel(language: PromptLanguage): string {
+  if (language === "en") return "System Error";
+  if (language === "ru") return "Системная ошибка";
+  return "系统错误";
+}
+
+function parseErrorDescription(language: PromptLanguage): string {
+  if (language === "en") return "Audit output format was invalid and could not be parsed as JSON.";
+  if (language === "ru") return "Формат вывода рецензента некорректен — не удалось распарсить как JSON.";
+  return "审稿输出格式异常，无法解析为 JSON";
+}
+
+function parseErrorSuggestion(language: PromptLanguage): string {
+  if (language === "en") return "The model may not support reliable structured output. Try a stronger model or inspect the API response format.";
+  if (language === "ru") return "Возможно, модель плохо держит структурированный вывод. Попробуй модель посильнее или проверь формат ответа API.";
+  return "可能是模型不支持结构化输出。尝试换一个更大的模型，或检查 API 返回格式。";
+}
+
+function parseFailureSummary(language: PromptLanguage): string {
+  if (language === "en") return "Audit output parsing failed";
+  if (language === "ru") return "Не удалось распарсить вывод рецензента";
+  return "审稿输出解析失败";
 }

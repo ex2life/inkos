@@ -24,6 +24,90 @@ describe("ReviserAgent", () => {
     vi.restoreAllMocks();
   });
 
+  it("emits a Russian language override and Russian routing directive when book language is ru", async () => {
+    const root = await mkdtemp(join(tmpdir(), "inkos-reviser-lang-ru-test-"));
+    const bookDir = join(root, "book");
+    await mkdir(join(bookDir, "story"), { recursive: true });
+
+    await writeFile(
+      join(bookDir, "book.json"),
+      JSON.stringify({
+        id: "russian-book",
+        title: "Russian Book",
+        genre: "xuanhuan",
+        platform: "litres",
+        chapterWordCount: 800,
+        targetChapters: 60,
+        status: "active",
+        language: "ru",
+        createdAt: "2026-03-23T00:00:00.000Z",
+        updatedAt: "2026-03-23T00:00:00.000Z",
+      }, null, 2),
+      "utf-8",
+    );
+
+    const agent = new ReviserAgent({
+      client: {
+        provider: "openai",
+        apiFormat: "chat",
+        stream: false,
+        defaults: {
+          temperature: 0.7,
+          maxTokens: 4096,
+          thinkingBudget: 0,
+          extra: {},
+        },
+      },
+      model: "test-model",
+      projectRoot: root,
+    });
+
+    const chatSpy = vi.spyOn(ReviserAgent.prototype as never, "chat" as never).mockResolvedValue({
+      content: [
+        "=== FIXED_ISSUES ===",
+        "- repaired",
+        "",
+        "=== REVISED_CONTENT ===",
+        "Переработанный текст главы.",
+        "",
+        "=== UPDATED_STATE ===",
+        "Карточка состояния",
+        "",
+        "=== UPDATED_HOOKS ===",
+        "Доска зацепок",
+      ].join("\n"),
+      usage: ZERO_USAGE,
+    });
+
+    try {
+      await agent.reviseChapter(
+        bookDir,
+        "Исходный текст главы.",
+        1,
+        [{
+          severity: "critical",
+          category: "Outline Drift Check",
+          description: "Структурное отклонение от плана главы",
+          suggestion: "Перестройте главу под план",
+        }],
+        "auto",
+        "xuanhuan",
+      );
+
+      const messages = chatSpy.mock.calls[0]?.[0] as
+        | ReadonlyArray<{ content: string }>
+        | undefined;
+      const systemPrompt = messages?.[0]?.content ?? "";
+
+      expect(systemPrompt).toContain("ДОЛЖНЫ быть на русском языке");
+      expect(systemPrompt).toContain("МАРШРУТИЗАЦИЯ");
+      expect(systemPrompt).toContain("REVISED_CONTENT");
+      expect(systemPrompt).not.toContain("分流指令");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("prefers book language override when building revision prompts", async () => {
     const root = await mkdtemp(join(tmpdir(), "inkos-reviser-lang-test-"));
     const bookDir = join(root, "book");

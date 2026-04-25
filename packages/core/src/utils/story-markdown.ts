@@ -16,6 +16,11 @@ export function renderSummarySnapshot(
       "| chapter | title | characters | events | stateChanges | hookActivity | mood | chapterType |",
       "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
+    : language === "ru"
+    ? [
+      "| глава | заголовок | персонажи | события | изменения состояния | активность зацепок | настроение | тип главы |",
+      "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
     : [
       "| 章节 | 标题 | 出场人物 | 关键事件 | 状态变化 | 伏笔动态 | 情绪基调 | 章节类型 |",
       "| --- | --- | --- | --- | --- | --- | --- | --- |",
@@ -45,6 +50,11 @@ export function renderHookSnapshot(
   const headers = language === "en"
     ? [
       "| hook_id | start_chapter | type | status | last_advanced | expected_payoff | payoff_timing | depends_on | pays_off_in_arc | core_hook | half_life | promoted | notes |",
+      "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    : language === "ru"
+    ? [
+      "| hook_id | начальная глава | тип | статус | последний сдвиг | ожидаемая расплата | темп расплаты | зависит от | закрывается в томе | ключевой | период полураспада | повышен | заметки |",
       "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     : [
@@ -80,16 +90,22 @@ function renderHalfLifeCell(value: number | undefined): string {
 function renderPromotedCell(value: boolean | undefined, language: "zh" | "en" | "ru"): string {
   if (value === undefined) return "";
   if (language === "en") return value ? "true" : "false";
+  if (language === "ru") return value ? "да" : "нет";
   return value ? "是" : "否";
 }
 
 function renderDependsOnCell(ids: ReadonlyArray<string>, language: "zh" | "en" | "ru"): string {
-  if (ids.length === 0) return language === "en" ? "none" : "无";
+  if (ids.length === 0) {
+    if (language === "en") return "none";
+    if (language === "ru") return "нет";
+    return "无";
+  }
   return `[${ids.join(", ")}]`;
 }
 
 function renderCoreHookCell(isCore: boolean, language: "zh" | "en" | "ru"): string {
   if (language === "en") return isCore ? "true" : "false";
+  if (language === "ru") return isCore ? "да" : "нет";
   return isCore ? "是" : "否";
 }
 
@@ -303,8 +319,8 @@ function parseOptionalBooleanCell(cell: string | undefined): boolean | undefined
   const normalized = (cell ?? "").trim();
   if (!normalized) return undefined;
   const lower = normalized.toLowerCase();
-  if (/^(true|yes|y|是|核心|core|1|✓|✔|promoted|已升级)$/.test(lower)) return true;
-  if (/^(false|no|n|否|未升级|seed|0|✗|✘)$/.test(lower)) return false;
+  if (/^(true|yes|y|是|核心|core|1|✓|✔|promoted|已升级|да|ключевой|повышен)$/.test(lower)) return true;
+  if (/^(false|no|n|否|未升级|seed|0|✗|✘|нет)$/.test(lower)) return false;
   return undefined;
 }
 
@@ -312,7 +328,7 @@ function parseDependsOn(cell: string): ReadonlyArray<string> {
   const trimmed = cell.trim();
   if (!trimmed) return [];
   const lower = trimmed.toLowerCase();
-  if (lower === "none" || lower === "n/a" || lower === "-" || trimmed === "无") return [];
+  if (lower === "none" || lower === "n/a" || lower === "-" || trimmed === "无" || lower === "нет") return [];
 
   // Accept [H01, H02] or H01, H02 or H01/H02.
   const stripped = trimmed.replace(/^[\[\(]\s*/, "").replace(/\s*[\]\)]$/, "");
@@ -325,7 +341,7 @@ function parseDependsOn(cell: string): ReadonlyArray<string> {
 function parseBooleanCell(cell: string | undefined): boolean {
   const normalized = (cell ?? "").trim().toLowerCase();
   if (!normalized) return false;
-  return /^(true|yes|y|是|核心|core|1|✓|✔)$/.test(normalized);
+  return /^(true|yes|y|是|核心|core|1|✓|✔|да|ключевой)$/.test(normalized);
 }
 
 function parseOptionalInt(cell: string | undefined): number | undefined {

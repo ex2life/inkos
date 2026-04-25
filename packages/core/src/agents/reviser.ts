@@ -51,7 +51,7 @@ type AutoOutputMode = "patch-only" | "rewrite-only" | "allow-full";
 
 function buildTieredIssueList(
   issues: ReadonlyArray<AuditIssue>,
-  isEnglish: boolean,
+  language: "zh" | "en" | "ru",
 ): string {
   const critical: string[] = [];
   const high: string[] = [];
@@ -70,19 +70,31 @@ function buildTieredIssueList(
 
   const parts: string[] = [];
   if (critical.length > 0) {
-    parts.push(isEnglish
-      ? `## Critical — Must Fix\n${critical.join("\n")}`
-      : `## Critical（必须解决）\n${critical.join("\n")}`);
+    if (language === "en") {
+      parts.push(`## Critical — Must Fix\n${critical.join("\n")}`);
+    } else if (language === "ru") {
+      parts.push(`## Critical — обязательно исправить\n${critical.join("\n")}`);
+    } else {
+      parts.push(`## Critical（必须解决）\n${critical.join("\n")}`);
+    }
   }
   if (high.length > 0) {
-    parts.push(isEnglish
-      ? `## High — Should Improve\n${high.join("\n")}`
-      : `## High（应当改善）\n${high.join("\n")}`);
+    if (language === "en") {
+      parts.push(`## High — Should Improve\n${high.join("\n")}`);
+    } else if (language === "ru") {
+      parts.push(`## High — желательно улучшить\n${high.join("\n")}`);
+    } else {
+      parts.push(`## High（应当改善）\n${high.join("\n")}`);
+    }
   }
   if (medium.length > 0) {
-    parts.push(isEnglish
-      ? `## Medium — Reference\n${medium.join("\n")}`
-      : `## Medium（参考建议）\n${medium.join("\n")}`);
+    if (language === "en") {
+      parts.push(`## Medium — Reference\n${medium.join("\n")}`);
+    } else if (language === "ru") {
+      parts.push(`## Medium — рекомендации к рассмотрению\n${medium.join("\n")}`);
+    } else {
+      parts.push(`## Medium（参考建议）\n${medium.join("\n")}`);
+    }
   }
 
   return parts.join("\n\n");
@@ -163,35 +175,69 @@ export class ReviserAgent extends BaseAgent {
       ? styleGuideRaw
       : (legacyRulesBody || "(无文风指南)");
 
-    const isEnglish = (bookLanguage ?? gp.language) === "en";
-    const resolvedLanguage = isEnglish ? "en" : "zh";
+    const resolvedLanguage: "zh" | "en" | "ru" = (() => {
+      const lang = bookLanguage ?? gp.language;
+      if (lang === "en") return "en";
+      if (lang === "ru") return "ru";
+      return "zh";
+    })();
+
+    const suggestionLabel = resolvedLanguage === "en"
+      ? "Suggestion"
+      : resolvedLanguage === "ru"
+        ? "Рекомендация"
+        : "建议";
 
     const issueList = mode === "auto"
-      ? buildTieredIssueList(issues, isEnglish)
+      ? buildTieredIssueList(issues, resolvedLanguage)
       : issues
-          .map((i) => `- [${i.severity}] ${i.category}: ${i.description}\n  ${isEnglish ? "Suggestion" : "建议"}: ${i.suggestion}`)
+          .map((i) => `- [${i.severity}] ${i.category}: ${i.description}\n  ${suggestionLabel}: ${i.suggestion}`)
           .join("\n");
 
     const numericalRule = gp.numericalSystem
-      ? (isEnglish
-          ? "\n3. Numerical errors must be fixed precisely — cross-check before and after"
-          : "\n3. 数值错误必须精确修正，前后对账")
+      ? (() => {
+          if (resolvedLanguage === "en") {
+            return "\n3. Numerical errors must be fixed precisely — cross-check before and after";
+          }
+          if (resolvedLanguage === "ru") {
+            return "\n3. Числовые ошибки следует исправлять точно — сверяйте значения до и после правки";
+          }
+          return "\n3. 数值错误必须精确修正，前后对账";
+        })()
       : "";
     const protagonistBlock = bookRules?.protagonist
-      ? (isEnglish
-          ? `\n\nProtagonist lock: ${bookRules.protagonist.name} — ${bookRules.protagonist.personalityLock.join(", ")}. Revisions must not violate the protagonist profile.`
-          : `\n\n主角人设锁定：${bookRules.protagonist.name}，${bookRules.protagonist.personalityLock.join("、")}。修改不得违反人设。`)
+      ? (() => {
+          if (resolvedLanguage === "en") {
+            return `\n\nProtagonist lock: ${bookRules.protagonist.name} — ${bookRules.protagonist.personalityLock.join(", ")}. Revisions must not violate the protagonist profile.`;
+          }
+          if (resolvedLanguage === "ru") {
+            return `\n\nЗакреплённый образ главного героя: ${bookRules.protagonist.name} — ${bookRules.protagonist.personalityLock.join(", ")}. Правки не должны нарушать характеристику персонажа.`;
+          }
+          return `\n\n主角人设锁定：${bookRules.protagonist.name}，${bookRules.protagonist.personalityLock.join("、")}。修改不得违反人设。`;
+        })()
       : "";
     // Length guardrail only used by legacy modes (manual CLI revise).
     // Auto mode delegates length to normalize, not reviser.
     const lengthGuardrail = mode !== "auto" && options?.lengthSpec
-      ? (isEnglish
-          ? "\n8. Keep the chapter word count within the target range; only allow minor deviation when fixing critical issues truly requires it"
-          : "\n8. 保持章节字数在目标区间内；只有在修复关键问题确实需要时才允许轻微偏离")
+      ? (() => {
+          if (resolvedLanguage === "en") {
+            return "\n8. Keep the chapter word count within the target range; only allow minor deviation when fixing critical issues truly requires it";
+          }
+          if (resolvedLanguage === "ru") {
+            return "\n8. Удерживайте объём главы в пределах целевого диапазона; небольшое отклонение допустимо лишь тогда, когда без него критическую правку выполнить невозможно";
+          }
+          return "\n8. 保持章节字数在目标区间内；只有在修复关键问题确实需要时才允许轻微偏离";
+        })()
       : "";
-    const langPrefix = isEnglish
-      ? `【LANGUAGE OVERRIDE】ALL output (FIXED_ISSUES, PATCHES, REVISED_CONTENT, UPDATED_STATE, UPDATED_HOOKS) MUST be in English.\n\n`
-      : "";
+    const langPrefix = (() => {
+      if (resolvedLanguage === "en") {
+        return `【LANGUAGE OVERRIDE】ALL output (FIXED_ISSUES, PATCHES, REVISED_CONTENT, UPDATED_STATE, UPDATED_HOOKS) MUST be in English.\n\n`;
+      }
+      if (resolvedLanguage === "ru") {
+        return `【LANGUAGE OVERRIDE】ВСЕ блоки вывода (FIXED_ISSUES, PATCHES, REVISED_CONTENT, UPDATED_STATE, UPDATED_HOOKS) ДОЛЖНЫ быть на русском языке.\n\n`;
+      }
+      return "";
+    })();
     const governedMode = Boolean(options?.chapterIntent && options?.contextPackage && options?.ruleStack);
     const hooksWorkingSet = governedMode && options?.contextPackage
       ? buildGovernedHookWorkingSet({
@@ -290,6 +336,7 @@ ${chapterContent}`;
       mode,
       chapterContent,
       autoOutputMode,
+      resolvedLanguage,
     );
     const mergedOutput = governedMode
       ? {
@@ -309,6 +356,7 @@ ${chapterContent}`;
     mode: ReviseMode,
     originalChapter: string,
     autoOutputMode: AutoOutputMode = "allow-full",
+    language: "zh" | "en" | "ru" = "zh",
   ): ReviseOutput {
     const extract = (tag: string): string => {
       const regex = new RegExp(
@@ -324,15 +372,31 @@ ${chapterContent}`;
       .map((l) => l.trim())
       .filter((l) => l.length > 0);
 
+    const stateFallback = (() => {
+      if (language === "en") return "(state card not updated)";
+      if (language === "ru") return "(карточка состояния не обновлена)";
+      return "(状态卡未更新)";
+    })();
+    const ledgerFallback = (() => {
+      if (language === "en") return "(ledger not updated)";
+      if (language === "ru") return "(реестр не обновлён)";
+      return "(账本未更新)";
+    })();
+    const hooksFallback = (() => {
+      if (language === "en") return "(hooks board not updated)";
+      if (language === "ru") return "(доска зацепок не обновлена)";
+      return "(伏笔池未更新)";
+    })();
+
     const makeResult = (revisedContent: string, applied: boolean): ReviseOutput => ({
       revisedContent,
       wordCount: revisedContent.length,
       fixedIssues: applied ? fixedIssues : [],
-      updatedState: extract("UPDATED_STATE") || "(状态卡未更新)",
+      updatedState: extract("UPDATED_STATE") || stateFallback,
       updatedLedger: gp.numericalSystem
-        ? (extract("UPDATED_LEDGER") || "(账本未更新)")
+        ? (extract("UPDATED_LEDGER") || ledgerFallback)
         : "",
-      updatedHooks: extract("UPDATED_HOOKS") || "(伏笔池未更新)",
+      updatedHooks: extract("UPDATED_HOOKS") || hooksFallback,
     });
 
     // Auto mode: route by issue type — structural issues require REVISED_CONTENT,
@@ -404,14 +468,23 @@ ${chapterContent}`;
   }): string {
     const { langPrefix, gp, protagonistBlock, numericalRule, resolvedLanguage, lengthSpec, autoOutputMode } = params;
     // lengthGuardrail intentionally not used in auto mode — length constraint is embedded in REVISED_CONTENT description
-    const en = resolvedLanguage === "en";
     const ledgerSection = gp.numericalSystem
-      ? (en ? "\n=== UPDATED_LEDGER ===\n(Full updated resource ledger)" : "\n=== UPDATED_LEDGER ===\n(更新后的完整资源账本)")
+      ? (() => {
+          if (resolvedLanguage === "en") return "\n=== UPDATED_LEDGER ===\n(Full updated resource ledger)";
+          if (resolvedLanguage === "ru") return "\n=== UPDATED_LEDGER ===\n(Полный обновлённый ресурсный реестр)";
+          return "\n=== UPDATED_LEDGER ===\n(更新后的完整资源账本)";
+        })()
       : "";
     const rewriteLengthConstraint = lengthSpec
-      ? (en
-          ? `\n  HARD CONSTRAINT: The revised chapter must stay within ${lengthSpec.softMin}-${lengthSpec.softMax} characters (target: ${lengthSpec.target}, ±25%). This is non-negotiable — do not exceed this range.`
-          : `\n  硬性约束：重写后的章节必须控制在 ${lengthSpec.softMin}-${lengthSpec.softMax} 字以内（目标 ${lengthSpec.target} 字，±25%）。这是不可突破的底线。`)
+      ? (() => {
+          if (resolvedLanguage === "en") {
+            return `\n  HARD CONSTRAINT: The revised chapter must stay within ${lengthSpec.softMin}-${lengthSpec.softMax} characters (target: ${lengthSpec.target}, ±25%). This is non-negotiable — do not exceed this range.`;
+          }
+          if (resolvedLanguage === "ru") {
+            return `\n  ЖЁСТКОЕ ОГРАНИЧЕНИЕ: переработанная глава должна укладываться в диапазон ${lengthSpec.softMin}-${lengthSpec.softMax} символов (цель: ${lengthSpec.target}, ±25%). Это требование не обсуждается — выходить за пределы запрещено.`;
+          }
+          return `\n  硬性约束：重写后的章节必须控制在 ${lengthSpec.softMin}-${lengthSpec.softMax} 字以内（目标 ${lengthSpec.target} 字，±25%）。这是不可突破的底线。`;
+        })()
       : "";
 
     const routingDirectiveEn = autoOutputMode === "rewrite-only"
@@ -419,14 +492,19 @@ ${chapterContent}`;
       : autoOutputMode === "patch-only"
         ? "\n\nROUTING: The reviewer's blocking issues are local (wording, paragraph shape, fatigue word, information boundary, knowledge pollution). You MUST output PATCHES only — do not rewrite the whole chapter. If patches are not possible, leave PATCHES empty."
         : "";
+    const routingDirectiveRu = autoOutputMode === "rewrite-only"
+      ? "\n\nМАРШРУТИЗАЦИЯ: блокирующие замечания рецензента носят структурный или смысловой характер (поломка образа, отклонение основной линии, отсутствие развязки, разрыв таймлайна, не закрытая зацепка, отклонение от memo и т.п.). Вы ОБЯЗАНЫ вернуть REVISED_CONTENT — не выдавайте PATCHES, для таких проблем они не работают. Если безопасно переписать невозможно, объясните это в FIXED_ISSUES и оставьте REVISED_CONTENT пустым."
+      : autoOutputMode === "patch-only"
+        ? "\n\nМАРШРУТИЗАЦИЯ: блокирующие замечания рецензента локальные (формулировки, форма абзаца, утомлённые слова, нарушение границы информации, загрязнение базы знаний). Вы ОБЯЗАНЫ вернуть только PATCHES — не переписывайте главу целиком. Если корректные патчи невозможны, оставьте PATCHES пустыми."
+        : "";
     const routingDirectiveZh = autoOutputMode === "rewrite-only"
       ? "\n\n分流指令：reviewer 报告的阻塞问题属于结构/语义错（人设崩、主线偏、爽点缺、时间线错、伏笔未收、memo 偏离等）。你必须输出 REVISED_CONTENT——禁止输出 PATCHES，这类问题不能靠补丁修复。如果无法安全重写，在 FIXED_ISSUES 里说明并留空 REVISED_CONTENT。"
       : autoOutputMode === "patch-only"
         ? "\n\n分流指令：reviewer 报告的阻塞问题属于局部错（措辞、段落形状、疲劳词、信息越界、知识污染）。你必须只输出 PATCHES——不要整章改写。如果做不出补丁，留空 PATCHES。"
         : "";
 
-    return en
-      ? `${langPrefix}You are a professional ${gp.name} web-fiction revision editor. Fix the chapter according to the review notes.${protagonistBlock}${routingDirectiveEn}
+    if (resolvedLanguage === "en") {
+      return `${langPrefix}You are a professional ${gp.name} web-fiction revision editor. Fix the chapter according to the review notes.${protagonistBlock}${routingDirectiveEn}
 
 PATCHES and REVISED_CONTENT serve different problems — choose by problem type, not preference:
 
@@ -473,8 +551,61 @@ REPLACEMENT_TEXT:
 (Full updated state card)
 ${ledgerSection}
 === UPDATED_HOOKS ===
-(Full updated hooks board)`
-      : `${langPrefix}你是一位专业的${gp.name}网络小说修稿编辑。你的任务是根据审稿意见对章节进行修正。${protagonistBlock}${routingDirectiveZh}
+(Full updated hooks board)`;
+    }
+
+    if (resolvedLanguage === "ru") {
+      return `${langPrefix}Вы — профессиональный редактор переработки веб-литературы в жанре «${gp.name}». Исправьте главу согласно замечаниям рецензента.${protagonistBlock}${routingDirectiveRu}
+
+PATCHES и REVISED_CONTENT решают разные задачи — выбирайте по типу проблемы, а не по предпочтению:
+
+PATCHES — для локальных проблем текста (формулировка, реплики, AI-штампы, мелкие непрерывности).
+  Каждый PATCH цитирует фрагмент оригинала (предложение, абзац или несколько абзацев), который нужно заменить, и приводит замену. Незатронутый текст остаётся в точности таким же.
+
+REVISED_CONTENT — для проблем уровня всей главы (сжатие объёма, структурная переработка, перестройка ритма, серьёзное смещение сюжета).
+  Возвращает полный текст переработанной главы. Если среди Critical-замечаний есть проблемы объёма или структуры, обязательно используйте REVISED_CONTENT — патчами ужать или перестроить главу нельзя.${rewriteLengthConstraint}
+
+Если Critical-замечания включают и локальные, и общеглавные проблемы, используйте REVISED_CONTENT (так вы решите всё за один проход).
+
+Принципы переработки:
+1. Устраняйте причины, а не делайте поверхностный полишинг${numericalRule}
+2. Состояние зацепок должно быть синхронизировано с доской зацепок. Если предоставлены брифы по hook debt, обязательно сохраняйте сцены отдачи зацепок
+3. Не меняйте направление сюжета и ключевые конфликты
+4. Сохраняйте язык, ритм и дыхание оригинала — не сжимайте переходные сцены и не удаляйте моменты передышки
+5. Эмоции через действие (никогда «он почувствовал злость» — покажите действием). Ценности — через поведение, а не лозунги
+6. Разные персонажи говорят по-разному. Никаких «все ахнули в один голос»
+7. Эскалация: плохое накапливается, каждый следующий поворот тяжелее предыдущего
+
+Циклически осознанная правка:
+- Если глава должна быть «последствиями», но напряжение всё ещё растёт, перепишите самый плотный конфликтный фрагмент в сцену перемены — кто что потерял, чья позиция сместилась, какая новая норма установилась
+- Если глава должна быть «кульминацией», но чёткой развязки нет, найдите ближайшую к награде сцену и усильте её — обещанная разрядка должна превзойти ожидания читателя
+- Бытовые фрагменты, не работающие на основную линию, переписывайте как «приманку»: добавьте деталь, указывающую в будущее, намёк или реакцию персонажа, сеющую любопытство
+
+Формат вывода:
+
+=== FIXED_ISSUES ===
+(Опишите каждую правку отдельной строкой; если безопасно сделать локальную правку нельзя, объясните это здесь)
+
+=== PATCHES ===
+(Локальные патчи — только для локальных проблем. Полностью опустите этот блок, если используете REVISED_CONTENT)
+--- PATCH 1 ---
+TARGET_TEXT:
+(Точная цитата из оригинала, однозначно идентифицирующая заменяемый фрагмент)
+REPLACEMENT_TEXT:
+(Текст замены для этого фрагмента)
+--- END PATCH ---
+
+=== REVISED_CONTENT ===
+(Полный текст переработанной главы — только когда патчами проблему решить нельзя. Опустите этот блок, если используете PATCHES)
+
+=== UPDATED_STATE ===
+(Полная обновлённая карточка состояния)
+${ledgerSection}
+=== UPDATED_HOOKS ===
+(Полная обновлённая доска зацепок)`;
+    }
+
+    return `${langPrefix}你是一位专业的${gp.name}网络小说修稿编辑。你的任务是根据审稿意见对章节进行修正。${protagonistBlock}${routingDirectiveZh}
 
 PATCHES 和 REVISED_CONTENT 分别处理不同类型的问题——按问题类型选择，不是按偏好：
 
@@ -533,8 +664,107 @@ ${ledgerSection}
     mode: ReviseMode;
     resolvedLanguage: "zh" | "en" | "ru";
   }): string {
-    const { langPrefix, gp, protagonistBlock, numericalRule, lengthGuardrail, mode } = params;
+    const { langPrefix, gp, protagonistBlock, numericalRule, lengthGuardrail, mode, resolvedLanguage } = params;
     const modeDesc = MODE_DESCRIPTIONS[mode];
+
+    if (resolvedLanguage === "ru") {
+      const outputFormat = mode === "spot-fix"
+        ? `=== FIXED_ISSUES ===
+(Опишите каждую правку отдельной строкой; если безопасную точечную правку выполнить нельзя, объясните это здесь)
+
+=== PATCHES ===
+--- PATCH 1 ---
+TARGET_TEXT:
+(Точная цитата из оригинала, однозначно идентифицирующая исходное предложение или абзац)
+REPLACEMENT_TEXT:
+(Заменяющий локальный текст)
+--- END PATCH ---
+
+=== UPDATED_STATE ===
+(Полная обновлённая карточка состояния)
+${gp.numericalSystem ? "\n=== UPDATED_LEDGER ===\n(Полный обновлённый ресурсный реестр)" : ""}
+=== UPDATED_HOOKS ===
+(Полная обновлённая доска зацепок)`
+        : `=== FIXED_ISSUES ===
+(Опишите каждую правку отдельной строкой)
+
+=== REVISED_CONTENT ===
+(Полный текст переработанной главы)
+
+=== UPDATED_STATE ===
+(Полная обновлённая карточка состояния)
+${gp.numericalSystem ? "\n=== UPDATED_LEDGER ===\n(Полный обновлённый ресурсный реестр)" : ""}
+=== UPDATED_HOOKS ===
+(Полная обновлённая доска зацепок)`;
+
+      return `${langPrefix}Вы — профессиональный редактор переработки веб-литературы в жанре «${gp.name}». Исправьте главу согласно замечаниям рецензента.${protagonistBlock}
+
+Режим переработки: ${modeDesc}
+
+Принципы переработки:
+1. Глубина правок определяется выбранным режимом
+2. Устраняйте причины, а не делайте поверхностный полишинг${numericalRule}
+4. Состояние зацепок должно быть синхронизировано с доской зацепок
+5. Не меняйте направление сюжета и ключевые конфликты
+6. Сохраняйте язык и ритм оригинала
+7. После правок синхронно обновляйте карточку состояния${gp.numericalSystem ? ", реестр" : ""} и доску зацепок
+${lengthGuardrail}
+${mode === "spot-fix" ? "\n9. spot-fix допускает только локальные патчи и запрещает переработку всей главы; TARGET_TEXT обязан однозначно совпадать с оригиналом\n10. Если требуется обширная правка, объясните, что безопасный spot-fix невозможен, и оставьте PATCHES пустым" : ""}
+
+Формат вывода:
+
+${outputFormat}`;
+    }
+
+    if (resolvedLanguage === "en") {
+      const outputFormat = mode === "spot-fix"
+        ? `=== FIXED_ISSUES ===
+(One fix per line; if a safe spot-fix is not possible, say so here)
+
+=== PATCHES ===
+--- PATCH 1 ---
+TARGET_TEXT:
+(Exact quote from the original that uniquely identifies the sentence or paragraph)
+REPLACEMENT_TEXT:
+(Replacement local text)
+--- END PATCH ---
+
+=== UPDATED_STATE ===
+(Full updated state card)
+${gp.numericalSystem ? "\n=== UPDATED_LEDGER ===\n(Full updated resource ledger)" : ""}
+=== UPDATED_HOOKS ===
+(Full updated hooks board)`
+        : `=== FIXED_ISSUES ===
+(One fix per line)
+
+=== REVISED_CONTENT ===
+(Full revised chapter content)
+
+=== UPDATED_STATE ===
+(Full updated state card)
+${gp.numericalSystem ? "\n=== UPDATED_LEDGER ===\n(Full updated resource ledger)" : ""}
+=== UPDATED_HOOKS ===
+(Full updated hooks board)`;
+
+      return `${langPrefix}You are a professional ${gp.name} web-fiction revision editor. Fix the chapter according to the review notes.${protagonistBlock}
+
+Revision mode: ${modeDesc}
+
+Revision principles:
+1. Match the edit depth to the chosen mode
+2. Fix root causes — do not apply superficial polish${numericalRule}
+4. Hook status must stay in sync with the hooks board
+5. Do not alter the plot direction or core conflicts
+6. Preserve the language style and rhythm of the original
+7. After edits, synchronously update the state card${gp.numericalSystem ? ", the ledger" : ""}, and the hooks board
+${lengthGuardrail}
+${mode === "spot-fix" ? "\n9. spot-fix may only emit local patches, never a whole-chapter rewrite; TARGET_TEXT must uniquely match the original\n10. If broad rewriting is required, explain that a safe spot-fix is not possible and leave PATCHES empty" : ""}
+
+Output format:
+
+${outputFormat}`;
+    }
+
     const outputFormat = mode === "spot-fix"
       ? `=== FIXED_ISSUES ===
 (逐条说明修正了什么，一行一条；如果无法安全定点修复，也在这里说明)

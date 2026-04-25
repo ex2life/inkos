@@ -122,6 +122,29 @@ describe("analyzeLongSpanFatigue", () => {
     }
   });
 
+  it("warns in Russian when recent chapter endings are highly similar", async () => {
+    const bookDir = await createBookDir("inkos-long-span-ru-ending-test-");
+
+    await Promise.all([
+      writeChapter(bookDir, 1, "Долг", "Дождь наконец-то прекратился. Огни гавани медленно растворились за его спиной. Он понимал, что долг лишь стал тяжелее."),
+      writeChapter(bookDir, 2, "Тяжесть", "Утренний туман наползал на причал. Никто не окликнул его по имени. Он понимал, что долг лишь стал тяжелее этой ночью."),
+    ]);
+
+    try {
+      const result = await analyzeLongSpanFatigue({
+        bookDir,
+        chapterNumber: 3,
+        chapterContent: "Переулок опустел к тому моменту, когда он повернул назад. Даже собаки замолчали. Он понимал, что долг лишь стал тяжелее снова.",
+        language: "ru",
+      });
+
+      expect(result.issues.some((issue) => issue.category === "Однообразие концовок")).toBe(true);
+      expect(result.issues.some((issue) => issue.description.includes("Последние 3 главы"))).toBe(true);
+    } finally {
+      await rm(join(bookDir, ".."), { recursive: true, force: true });
+    }
+  });
+
   it("warns when title focus collapses and high-tension mood never releases", async () => {
     const bookDir = await createBookDir("inkos-long-span-cadence-test-");
 

@@ -38,6 +38,7 @@ interface SummaryRow {
 
 const CHINESE_PUNCTUATION = /[，。！？；：“”‘’（）《》、\s\-—…·]/g;
 const ENGLISH_PUNCTUATION = /[^a-z0-9]+/gi;
+const RUSSIAN_PUNCTUATION = /[^\p{L}\p{N}\s]+/gu;
 
 export async function buildEnglishVarianceBrief(params: {
   readonly bookDir: string;
@@ -224,6 +225,15 @@ function buildChapterTypeIssue(
     };
   }
 
+  if (language === "ru") {
+    return {
+      severity: "warning",
+      category: "Однообразие ритма",
+      description: `Последние ${streak} глав(ы) подряд держатся на типе «${repeatedType}», что указывает на застывание макроритма повествования.`,
+      suggestion: "В следующей главе смените функцию: чередуйте завязку, расплату, разворот и последствия осознаннее, не повторяйте тот же такт.",
+    };
+  }
+
   return {
     severity: "warning",
     category: "节奏单调",
@@ -250,6 +260,15 @@ function buildMoodIssue(
     };
   }
 
+  if (language === "ru") {
+    return {
+      severity: "warning",
+      category: "Однообразие настроения",
+      description: `Последние ${highTensionStreak} глав(ы) держат высокое напряжение (${recentMoods.join(" -> ")}), без заметной эмоциональной разрядки.`,
+      suggestion: "В следующей главе дайте передышку: тепло, юмор, близость или тихую рефлексию, прежде чем снова наращивать давление.",
+    };
+  }
+
   return {
     severity: "warning",
     category: "情绪单调",
@@ -273,6 +292,15 @@ function buildTitleIssue(
       category: "Title Collapse",
       description: `Recent titles keep collapsing around "${repeatedToken}" (${count} hits in the current window), which makes chapter naming feel formulaic.`,
       suggestion: "Change the next title anchor. Use a new image, action, consequence, or character vector instead of the same keyword shell.",
+    };
+  }
+
+  if (language === "ru") {
+    return {
+      severity: "warning",
+      category: "Повторение заголовков",
+      description: `Недавние заголовки стягиваются вокруг слова «${repeatedToken}» (${count} попаданий в текущем окне), нейминг глав становится шаблонным.`,
+      suggestion: "В следующей главе смените якорь заголовка: возьмите новый образ, действие, последствие или фокус персонажа вместо того же ключевого слова.",
     };
   }
 
@@ -351,6 +379,20 @@ function buildSentencePatternIssue(
       suggestion: boundary === "opening"
         ? "Change the next chapter opening vector. Start from action, consequence, or surprise instead of repeating the same camera move."
         : "Change the next chapter landing pattern. End on consequence, decision, or a new variable instead of repeating the same explanatory cadence.",
+    };
+  }
+
+  if (language === "ru") {
+    const category = boundary === "opening" ? "Однообразие зачинов" : "Однообразие концовок";
+    const position = boundary === "opening" ? "зачинов" : "концовок";
+    const boundaryNoun = boundary === "opening" ? "зачина" : "концовки";
+    return {
+      severity: "warning",
+      category,
+      description: `Последние 3 главы имеют сильно похожие ${position} (соседнее сходство ${pairText}), это рискует превратиться в шаблонный ритм. Текущая подпись ${boundaryNoun}: «${sample}».`,
+      suggestion: boundary === "opening"
+        ? "Смените входную точку следующей главы: начните с действия, последствия или неожиданности, а не повторяйте тот же приём камеры. Избегайте штампов вроде «тем не менее», «при этом», «стоит отметить»."
+        : "Смените способ посадки следующей главы: завершите её последствием, решением или новой переменной, а не очередной пояснительной фразой. Избегайте штампов вроде «вместе с тем», «следует подчеркнуть», «в то же время».",
     };
   }
 
@@ -466,6 +508,14 @@ function normalizeSentence(sentence: string, language: "zh" | "en" | "ru"): stri
       .trim();
   }
 
+  if (language === "ru") {
+    return sentence
+      .replace(RUSSIAN_PUNCTUATION, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLocaleLowerCase("ru-RU");
+  }
+
   return sentence
     .replace(CHINESE_PUNCTUATION, "")
     .toLowerCase();
@@ -476,6 +526,17 @@ function summarizeSentence(sentence: string, language: "zh" | "en" | "ru"): stri
     const words = sentence
       .toLowerCase()
       .replace(/[^a-z0-9\s]+/gi, " ")
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 6)
+      .join(" ");
+    return words.length > 0 ? words : sentence.slice(0, 32);
+  }
+
+  if (language === "ru") {
+    const words = sentence
+      .toLocaleLowerCase("ru-RU")
+      .replace(RUSSIAN_PUNCTUATION, " ")
       .split(/\s+/)
       .filter(Boolean)
       .slice(0, 6)

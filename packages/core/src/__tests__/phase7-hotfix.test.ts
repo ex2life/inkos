@@ -74,6 +74,38 @@ describe("Phase 7 hotfix 1 — half_life roundtrip", () => {
     expect(hImplicit.halfLifeChapters).toBeUndefined();
   });
 
+  it("renders the Russian header set and round-trips да/нет boolean cells", () => {
+    const hooks: StoredHook[] = [
+      {
+        hookId: "H-ru-core",
+        startChapter: 4,
+        type: "основная линия",
+        status: "open",
+        lastAdvancedChapter: 0,
+        expectedPayoff: "финальная глава",
+        notes: "ключевая зацепка",
+        payoffTiming: "endgame",
+        coreHook: true,
+        halfLifeChapters: 30,
+        promoted: true,
+        dependsOn: [],
+      },
+    ];
+
+    const rendered = renderHookSnapshot(hooks, "ru");
+    expect(rendered).toContain("| период полураспада |");
+    expect(rendered).toContain("| повышен |");
+    // Core/promoted booleans render as да; depends_on empty renders as нет.
+    expect(rendered).toContain("| H-ru-core | 4 | основная линия | open | 0 | финальная глава | финал | нет |  | да | 30 | да | ключевая зацепка |");
+
+    const parsed = parsePendingHooksMarkdown(rendered);
+    const hook = parsed.find((h) => h.hookId === "H-ru-core")!;
+    expect(hook.coreHook).toBe(true);
+    expect(hook.promoted).toBe(true);
+    expect(hook.halfLifeChapters).toBe(30);
+    expect(hook.dependsOn ?? []).toEqual([]);
+  });
+
   it("legacy 11-column pending_hooks.md still parses (half_life stays undefined)", () => {
     const legacy11 = [
       "| hook_id | 起始章节 | 类型 | 状态 | 最近推进 | 预期回收 | 回收节奏 | 上游依赖 | 回收卷 | 核心 | 备注 |",

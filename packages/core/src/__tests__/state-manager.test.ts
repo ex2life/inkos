@@ -800,6 +800,46 @@ describe("StateManager", () => {
       expect(controlDocs.runtimeDir).toBe(join(storyDir, "runtime"));
     });
 
+    it("creates substantive Russian defaults for Russian books", async () => {
+      await manager.saveBookConfig("ru-book", {
+        id: "ru-book",
+        title: "Русская книга",
+        platform: "other",
+        genre: "other",
+        status: "outlining",
+        targetChapters: 100,
+        chapterWordCount: 2200,
+        language: "ru",
+        createdAt: "2026-03-24T00:00:00Z",
+        updatedAt: "2026-03-24T00:00:00Z",
+      });
+
+      await manager.ensureControlDocuments("ru-book");
+
+      const storyDir = join(manager.bookDir("ru-book"), "story");
+      const authorIntent = await readFile(
+        join(storyDir, "author_intent.md"),
+        "utf-8",
+      );
+      const currentFocus = await readFile(
+        join(storyDir, "current_focus.md"),
+        "utf-8",
+      );
+
+      // Russian heading must be present and substantive — not aliased to English.
+      expect(authorIntent).toContain("# Авторский замысел");
+      expect(authorIntent).not.toContain("# Author Intent");
+      expect(authorIntent).not.toContain("# 作者意图");
+      // Body must contain real Russian guidance, not a placeholder.
+      expect(authorIntent).toMatch(/долгосрочное направление/);
+
+      expect(currentFocus).toContain("# Текущий фокус");
+      expect(currentFocus).toContain("## Активный фокус");
+      expect(currentFocus).not.toContain("# Current Focus");
+      expect(currentFocus).not.toContain("# 当前聚焦");
+      expect(currentFocus).toMatch(/ближайших\s+1.{1,3}3\s+глав/);
+    });
+
     it("creates localized Chinese defaults for Chinese books", async () => {
       await manager.saveBookConfig("zh-book", {
         id: "zh-book",

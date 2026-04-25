@@ -83,6 +83,47 @@ describe("StateValidatorAgent", () => {
     expect(options?.maxTokens).toBeUndefined();
   });
 
+  it("instructs the model to respond in Russian when language is ru", async () => {
+    const agent = new StateValidatorAgent({
+      client: {
+        provider: "openai",
+        apiFormat: "chat",
+        stream: false,
+        defaults: {
+          temperature: 0.7,
+          maxTokens: 4096,
+          thinkingBudget: 0,
+          extra: {},
+        },
+      },
+      model: "test-model",
+      projectRoot: process.cwd(),
+    });
+
+    const chatSpy = vi.spyOn(
+      agent as unknown as { chat: (...args: unknown[]) => Promise<unknown> },
+      "chat",
+    ).mockResolvedValue({ content: "PASS", usage: ZERO_USAGE });
+
+    await agent.validate(
+      "Тело главы.",
+      1,
+      "old state",
+      "new state",
+      "old hooks",
+      "new hooks",
+      "ru",
+    );
+
+    const messages = chatSpy.mock.calls[0]?.[0] as
+      | ReadonlyArray<{ content: string }>
+      | undefined;
+    const systemPrompt = messages?.[0]?.content ?? "";
+    expect(systemPrompt).toContain("Отвечайте на русском языке.");
+    expect(systemPrompt).not.toContain("用中文回答");
+    expect(systemPrompt).not.toContain("Respond in English");
+  });
+
   it("throws when the validator model returns an empty response", async () => {
     const agent = new StateValidatorAgent({
       client: {

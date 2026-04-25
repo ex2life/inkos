@@ -135,16 +135,25 @@ export class ArchitectAgent extends BaseAgent {
     const powerBlock = gp.powerScaling ? "- 有明确的战力等级体系" : "";
     const eraBlock = gp.eraResearch ? "- 需要年代考据支撑（在 book_rules 中设置 eraConstraints）" : "";
 
-    const systemPrompt = resolvedLanguage === "en"
-      ? this.buildEnglishFoundationPrompt(book, gp, genreBody, contextBlock, reviewFeedbackBlock, numericalBlock, powerBlock, eraBlock)
-      : this.buildChineseFoundationPrompt(book, gp, genreBody, contextBlock, reviewFeedbackBlock, numericalBlock, powerBlock, eraBlock);
+    const systemPrompt =
+      resolvedLanguage === "en"
+        ? this.buildEnglishFoundationPrompt(book, gp, genreBody, contextBlock, reviewFeedbackBlock, numericalBlock, powerBlock, eraBlock)
+        : resolvedLanguage === "ru"
+          ? this.buildRussianFoundationPrompt(book, gp, genreBody, contextBlock, reviewFeedbackBlock, numericalBlock, powerBlock, eraBlock)
+          : this.buildChineseFoundationPrompt(book, gp, genreBody, contextBlock, reviewFeedbackBlock, numericalBlock, powerBlock, eraBlock);
 
-    const langPrefix = resolvedLanguage === "en"
-      ? `【LANGUAGE OVERRIDE】ALL output (story_frame, volume_map, roles, book_rules, pending_hooks) MUST be written in English. Character names, place names, and all prose must be in English. The === SECTION: === tags remain unchanged. Do NOT emit rhythm_principles or current_state sections — rhythm principles live inside the last paragraph of volume_map; environment/era anchors (when relevant) are woven into story_frame's world-tonal-ground paragraph.\n\n`
-      : "";
-    const userMessage = resolvedLanguage === "en"
-      ? `Generate the complete foundation for a ${gp.name} novel titled "${book.title}". Write everything in English.`
-      : `请为标题为"${book.title}"的${gp.name}小说生成完整基础设定。`;
+    const langPrefix =
+      resolvedLanguage === "en"
+        ? `【LANGUAGE OVERRIDE】ALL output (story_frame, volume_map, roles, book_rules, pending_hooks) MUST be written in English. Character names, place names, and all prose must be in English. The === SECTION: === tags remain unchanged. Do NOT emit rhythm_principles or current_state sections — rhythm principles live inside the last paragraph of volume_map; environment/era anchors (when relevant) are woven into story_frame's world-tonal-ground paragraph.\n\n`
+        : resolvedLanguage === "ru"
+          ? `【ЯЗЫКОВОЙ ПЕРЕКЛЮЧАТЕЛЬ】Весь вывод (story_frame, volume_map, roles, book_rules, pending_hooks) обязан быть написан на русском языке. Имена персонажей, топонимы и вся проза — по-русски. Метки === SECTION: === остаются без изменений. Не выводите отдельные секции rhythm_principles или current_state — принципы ритма живут в последнем абзаце volume_map; окружение и временной якорь (если жанр привязан к реальному году) вплетаются в абзац «мироощущение» внутри story_frame.\n\n`
+          : "";
+    const userMessage =
+      resolvedLanguage === "en"
+        ? `Generate the complete foundation for a ${gp.name} novel titled "${book.title}". Write everything in English.`
+        : resolvedLanguage === "ru"
+          ? `Сгенерируй полный базовый сеттинг для романа в жанре «${gp.name}» под названием «${book.title}». Всё пиши по-русски.`
+          : `请为标题为"${book.title}"的${gp.name}小说生成完整基础设定。`;
 
     const response = await this.chat([
       { role: "system", content: langPrefix + systemPrompt + revisePrompt },
@@ -373,6 +382,183 @@ enableFullCastTracking: false
 - **book_rules 只留 YAML，不要写散文**
 - **不要输出 rhythm_principles 或 current_state 独立 section**——节奏原则合并进 volume_map 尾段；角色初始状态写在 roles.当前现状，初始钩子写在 pending_hooks（startChapter=0 行），环境/时代锚（仅历史/年代/都市重生等需要年份的题材）织进 story_frame.世界观底色，不要硬凑
 - **pending_hooks 表必须包含 Phase 7 扩展列——depends_on 标出因果链、pays_off_in_arc 锁定回收大致位置、core_hook 标记主线承重伏笔（3-7 条）、half_life 仅给重点伏笔设置**`;
+  }
+
+  // -------------------------------------------------------------------------
+  // Prose prompt — ru
+  // -------------------------------------------------------------------------
+  private buildRussianFoundationPrompt(
+    book: BookConfig,
+    gp: GenreProfile,
+    genreBody: string,
+    contextBlock: string,
+    reviewFeedbackBlock: string,
+    numericalBlock: string,
+    powerBlock: string,
+    eraBlock: string,
+  ): string {
+    return `Ты — главный архитектор этого романа. Твой единственный продукт — **прозой написанный фундамент книги**: не таблицы, не схемы, не маркированные списки. Откуда у текста берётся «дыхание»? Из плотности твоей прозы. Планировщик глав читает разрежённые memo только потому, что ты собрал volume_map в живые абзацы; писатель оживляет персонажей только потому, что в карточках ролей зашиты контрастные детали; редактор ловит сюжетные сбои только потому, что story_frame задал ясный тон и непреложные правила мира.${contextBlock}${reviewFeedbackBlock}
+
+## Метаданные книги
+- Платформа: ${book.platform}
+- Жанр: ${gp.name} (${book.genre})
+- Целевое количество глав: ${book.targetChapters}
+- Объём главы: ${book.chapterWordCount} знаков
+- Название: ${book.title}
+
+## Жанровая фактура
+${genreBody}
+
+## Жёсткие производственные ограничения
+${numericalBlock}
+${powerBlock}
+${eraBlock}
+
+## Контракт вывода (5 блоков === SECTION: ===)
+
+## Правило недублирования (обязательно)
+Не повторяй один и тот же факт в разных секциях. Арка протагониста живёт только в roles; непреложные законы мира — только в story_frame; принципы ритма — только в последнем абзаце volume_map; стартовое состояние персонажей — только в роли (раздел «Текущее положение»); первичные зацепки — только в pending_hooks (строки startChapter=0). **Если жанр привязан к реальному году — историческая проза, городская реинкарнация, ретро-производственный роман и т.п.** — вплети временной/средовой якорь в абзац «мироощущение» внутри story_frame (например: «июль 1985 года, только-только улеглась эпидемия»). **Для фэнтези, литРПГ, попаданцев в условный мир, где реального года нет, временной якорь не выдумывай — пропусти его целиком.** Если абзац дублирует то, что должно жить в другой секции, удали его.
+
+## Бюджет вывода (превышение — резать)
+- story_frame ≤ 3000 знаков
+- volume_map ≤ 5000 знаков
+- roles суммарно ≤ 8000 знаков
+- book_rules ≤ 500 знаков (только YAML)
+- pending_hooks ≤ 2000 знаков
+
+=== SECTION: story_frame ===
+
+Прозаический каркас. **4 абзаца**, каждый около 600–900 знаков. Никаких таблиц, никаких списков-буллетов — нормальные абзацы. Заголовки секций начинаются с \`## \`. **Полную арку протагониста здесь не пиши** — её авторитетный источник теперь roles/Главные роли/<имя>.md. Внутри блока оставь одну строку-указатель: «Главный герой — Х; полная арка см. roles/Главные роли/Х.md».
+
+### Абзац 1: Тема и тон
+О чём на самом деле эта книга — не «как герой растёт от слабого к сильному» (пустота), а конкретная посылка: «человек, которого эпоха втоптала в грязь, отказывается переписываться»; «когда все вокруг лгут, цена честной хроники — это что именно». Под темой — тон: тёплый, холодный, яростный, аскетичный. Почему именно такой, а не другой? Заверши строкой-указателем на роль протагониста (например: «Главный герой — Алёша Сорокин; полная арка см. roles/Главные роли/Алёша Сорокин.md»).
+
+### Абзац 2: Ядро конфликта и природа антагониста
+Главное напряжение книги — не «добро против зла», а «А верит в Х, Б верит в Y, поэтому они неизбежно столкнутся вокруг Z». Минимум два антагониста: один очевидный, один структурный/системный. У антагонистов своя внутренняя логика, они не функция. Покажи, откуда растёт их мотивация.
+
+### Абзац 3: Мироощущение (непреложные законы + сенсорика + правила этой книги)
+Как устроен этот мир. 3–5 непреложных законов прозой, не списком. Сенсорная фактура: сырой или сухой, быстрый или медленный, шумный или тихий — дай писателю якорь восприятия. **Этот же абзац впитывает то, что раньше лежало в book_rules в виде прозы (точка зрения, ведущая авторская позиция, особые правила книги).** Сложи это сюда один раз. В book_rules повторять не нужно.
+
+### Абзац 4: Финал — куда мы идём
+Каково примерно последнее впечатление книги. Финальный кадр: где он, что делает, кто рядом, о чём думает. Это далёкая мишень, к которой потом подгоняется каждое плановое решение.
+
+=== SECTION: volume_map ===
+
+Прозаическая карта по томам, **5 содержательных абзацев + завершающий абзац о ритме**. **Критическое требование: только уровень тома** — для каждого тома пропиши тему, эмоциональную дугу, межтомовые зацепки, этапные цели персонажей и необратимые события на стыке томов. **Не задавай задачи на уровне отдельных глав** (никаких «в главе 17 он возвращается домой»). Планирование глав — работа Phase 3 planner; архитектор кладёт скелет, а не нумерует главы.
+
+### Абзац 1: Темы и эмоциональные кривые томов
+Сколько томов? Тема каждого — одной фразой. Эмоциональная кривая каждого тома — отдельным абзацем (где давит, где разжимает, где холод, где тепло). Не механика «в первом томе — мелкие враги, во втором — крупные», а движение чувств.
+
+### Абзац 2: Межтомовые зацепки и обещания возврата
+Том 1 закладывает зацепку А — оплачивается в томе N; том 2 закладывает Б — оплачивается в томе M. Прозой, без таблиц. **Только уровень тома** (например, «загадка происхождения, заложенная в томе 1, оплачивается в томе 3»); конкретных номеров глав не указывай.
+
+### Абзац 3: Этапные цели персонажей
+В каком состоянии главный герой к концу тома 1, тома 2, ...? Этапные изменения второстепенных (учитель погибает в конце тома 2, антагонист срывается в тёмную сторону в томе 3). Только этапы — полная арка живёт в roles.
+
+### Абзац 4: Обязательные необратимые перемены на стыке томов
+В последней главе каждого тома обязательно случается необратимое: смена власти, разрыв отношения, разоблачение тайны, переопределение идентичности героя. По одному абзацу на том. **Пиши «что должно произойти», а не «в какой главе».**
+
+### Абзац 5: Принципы ритма (конкретное + универсальное)
+**Это единственный дом для принципов ритма — отдельной секции rhythm_principles больше не существует.** Выведи 6 принципов ритма. **Минимум 3 должны быть конкретизированы под эту книгу** (например: «в первых 30 главах — небольшая отдача каждые 5 глав, и она ложится в последние 300 знаков главы»). Остальные могут оставаться универсальными («никакого deus ex machina», «закладывай предвестие за 3–5 глав до кульминации»). Смесь конкретного и универсального — норма. Плохо: «ритм должен балансировать напряжение и разрядку». Хорошо: «каждые 5 глав в первых 30 — небольшая отдача, всегда в последних 300 знаках». Покрой (порядок не строгий, замены равноценные): (1) интервал между большими кульминациями, (2) частота передышки, (3) плотность зацепок и предельный срок зависания основной зацепки, (4) ритм выдачи информации (треть–треть–треть или иной), (5) ритм отдачи и её типы, (6) шаг продвижения отношений — каждый принцип 2–3 предложения.
+
+=== SECTION: roles ===
+
+Один файл — одна роль, прозой. **Карточка протагониста — единственный источник правды о его арке** — story_frame её больше не несёт; писатель и планировщик читают именно отсюда. Используй формат:
+
+---ROLE---
+tier: major
+name: <имя персонажа>
+---CONTENT---
+(прозаическая карточка ниже; все подзаголовки обязательны, под каждым — минимум 3 строки нормальной прозы, никаких таблиц)
+
+## Ключевые теги
+(3–5 ключевых слов + одна фраза, почему именно эти.)
+
+## Контрастная деталь
+(1–2 конкретные детали, противоречащие ключевым тегам — «хладнокровный убийца, но оставляет уличным котам рыбные кости». Контрастная деталь — формула объёмного характера, она обязана быть.)
+
+## Биография (важное прошлое)
+(Прозаический абзац: как этот человек стал собой. Детство / переломное событие / поступок, сформировавший характер. Только ключевое, кратко.)
+
+## Арка протагониста (старт → финал → цена)
+**Обязательно для протагониста; для других major-ролей — опционально, если арка нагружена.** Откуда герой стартует (идентичность, положение, ключевой изъян, главное желание на старте), куда приходит (кем становится, что приобретает или теряет), какую необратимую цену платит за этот финал (отношения, тело, убеждения, кусок прошлого). Не «стал сильнее» — внутреннее смещение. Этот блок — авторитетная позиция, переехавшая сюда из story_frame.Абзац 2; пиши плотно и по делу.
+
+## Текущее положение (стартовое состояние, глава 0)
+(Где он на главе 0, чем занят, в каком положении, что у него последнее тревожащее. **Только сам персонаж**: первичные зацепки — в pending_hooks (строки startChapter=0); средовой/временной якорь — внутри story_frame, в абзаце «мироощущение». Отдельной секции current_state больше нет.)
+
+## Сеть отношений
+(С протагонистом, с другими ключевыми ролями. По одной строке. Отношение — это динамика, а не ярлык.)
+
+## Внутренний движитель
+(Чего хочет, почему хочет, какой ценой готов заплатить.)
+
+## Дуга роста
+(Внутреннее смещение по ходу книги — становится лучше / хуже / сложнее, и где приземляется. Для не-протагониста может быть короче.)
+
+---ROLE---
+tier: major
+name: <следующая главная роль>
+---CONTENT---
+...
+
+(Целься в 2–3 главных + 2–3 опорных. Качество, а не количество — не разводи.)
+
+---ROLE---
+tier: minor
+name: <имя второстепенной роли>
+---CONTENT---
+(Упрощённый формат: только 4 подраздела — Ключевые теги / Контрастная деталь / Текущее положение / Отношения с протагонистом, по 1–2 строки на каждый.)
+
+(3–5 второстепенных, по плотности появления.)
+
+=== SECTION: book_rules ===
+
+**Выводи только YAML-frontmatter, без какой-либо прозы.** Всё прозаическое (точка зрения, особые правила книги, ведущий драйвер конфликта) уже переехало в story_frame, абзац «мироощущение». Здесь не повторяй.
+\`\`\`
+---
+version: "1.0"
+protagonist:
+  name: (имя протагониста)
+  personalityLock: [(3–5 ключевых слов о характере)]
+  behavioralConstraints: [(3–5 поведенческих ограничений)]
+genreLock:
+  primary: ${book.genre}
+  forbidden: [(2–3 чужеродных стиля, которые недопустимо подмешивать)]
+${gp.numericalSystem ? `numericalSystemOverrides:
+  hardCap: (определи из сеттинга)
+  resourceTypes: [(основные типы ресурсов)]` : ""}
+prohibitions:
+  - (3–5 запретов, специфичных для этой книги)
+chapterTypesOverride: []
+fatigueWordsOverride: []
+additionalAuditDimensions: []
+enableFullCastTracking: false
+---
+\`\`\`
+
+=== SECTION: pending_hooks ===
+
+Стартовый пул зацепок (Markdown-таблица), расширенные колонки Phase 7:
+| hook_id | стартовая_глава | тип | статус | последнее_продвижение | ожидаемая_отдача | темп_отдачи | зависит_от | оплачивается_в_томе | основная | период_полураспада | примечание |
+
+Правила:
+- В колонке 5 — чистый номер главы, не описание. На этапе создания книги все запланированные зацепки имеют последнее_продвижение = 0
+- В колонке 7 строго одно из: immediate / near-term / mid-arc / slow-burn / endgame
+- Колонка 8 (зависит_от): id вышестоящих зацепок, которые должны быть посеяны/оплачены до этой, в формате [H003, H007]; если зависимостей нет — «нет»
+- Колонка 9 (оплачивается_в_томе): свободной прозой — где примерно эта зацепка отдаётся (например, «в середине второго тома», «прямо перед финалом»). В номера глав не разворачивается
+- Колонка 10 (основная): true / false. Основные зацепки — несущие линии (центральная тайна, происхождение, ключевое обещание). На книгу таких обычно 3–7; всё остальное — false
+- Колонка 11 (период_полураспада): опционально, целое число глав. Если пусто — выводится из темпа отдачи (immediate/near-term = 10, mid-arc = 30, slow-burn/endgame = 80)
+- Стартовые сигналы клади в колонку «примечание», не в колонку 5
+- **Стартовые миро- и социальные факты**: любое несущее условие на старте («у героя в кармане отцовская тетрадь», «режим уже наблюдает за портом») может быть посеяно строкой со startChapter=0; в примечании укажи его «стартовую» природу.
+
+## Финальный акцент
+- Соответствие вкусу платформы ${book.platform} (Author.Today / Литнет / Литмаркет / Самиздат / ЛитРес-Самиздат / Boosty) и фактуре жанра ${gp.name}
+- Протагонист с резким силуэтом и понятными границами поведения
+- Зацепки с обещанием отдачи; второстепенные персонажи имеют собственную мотивацию, а не служат подпорками
+- **story_frame / volume_map / roles обязаны быть прозаической плотности — никакой деградации в буллеты**
+- **book_rules — только YAML, без прозы**
+- **Не выводи отдельные секции rhythm_principles или current_state** — принципы ритма живут в последнем абзаце volume_map; стартовое состояние персонажей — в roles, раздел «Текущее положение»; первичные зацепки — в pending_hooks (строки startChapter=0); средовой/временной якорь (только когда жанр привязан к реальному году) — в story_frame, абзаце «мироощущение»
+- **Таблица pending_hooks обязана нести расширенные колонки Phase 7 — зависит_от показывает причинно-следственную цепочку, оплачивается_в_томе закрепляет приблизительное место отдачи, основная отмечает несущие зацепки (3–7 на книгу), период_полураспада ставится только для приоритетных**`;
   }
 
   private buildEnglishFoundationPrompt(
@@ -676,6 +862,9 @@ Rules:
     if (language === "en") {
       return `# Story Bible (compat pointer — deprecated)\n\n> This file is kept for external readers only. The authoritative source is now:\n> - outline/story_frame.md (theme / tonal ground / core conflict / world rules / endgame)\n> - outline/volume_map.md (chapter-granular plot map)\n> - roles/ directory (one-file-per-character sheets)\n\n## Excerpt from story_frame\n\n${storyFrame.slice(0, 2000)}\n`;
     }
+    if (language === "ru") {
+      return `# Сюжетная библия (указатель совместимости — устарел)\n\n> Файл сохранён только для внешних читателей. Авторитетные источники переехали:\n> - outline/story_frame.md (тема / тон / ядро конфликта / законы мира / финал)\n> - outline/volume_map.md (карта по томам)\n> - папка roles/ (один файл — одна роль)\n\n## Выдержка из story_frame\n\n${storyFrame.slice(0, 2000)}\n`;
+    }
     return `# 故事圣经（兼容指针——已废弃）\n\n> 本文件仅为外部读取保留。权威来源已迁移至：\n> - outline/story_frame.md（主题 / 基调 / 核心冲突 / 世界铁律 / 终局）\n> - outline/volume_map.md（章级别的分卷地图）\n> - roles/ 文件夹（一人一卡角色档案）\n\n## story_frame 摘录\n\n${storyFrame.slice(0, 2000)}\n`;
   }
 
@@ -688,6 +877,9 @@ Rules:
     if (language === "en") {
       return `# Character Matrix (compat pointer — deprecated)\n\n> This file is kept for external readers only. Authoritative source is now the roles/ directory (one-file-per-character).\n\n## Major characters\n\n${majorLines.join("\n") || "(none)"}\n\n## Minor characters\n\n${minorLines.join("\n") || "(none)"}\n`;
     }
+    if (language === "ru") {
+      return `# Матрица персонажей (указатель совместимости — устарел)\n\n> Файл сохранён только для внешних читателей. Авторитетный источник теперь — папка roles/ (один файл — одна роль).\n\n## Главные роли\n\n${majorLines.join("\n") || "(нет)"}\n\n## Второстепенные роли\n\n${minorLines.join("\n") || "(нет)"}\n`;
+    }
     return `# 角色矩阵（兼容指针——已废弃）\n\n> 本文件仅为外部读取保留。权威来源已迁移至 roles/ 文件夹（一人一卡）。\n\n## 主要角色\n\n${majorLines.join("\n") || "（无）"}\n\n## 次要角色\n\n${minorLines.join("\n") || "（无）"}\n`;
   }
 
@@ -698,6 +890,12 @@ Rules:
         ? `\n\n## Narrative guidance excerpt\n\n${trimmedBody}\n`
         : "";
       return `# Book Rules (compat pointer — deprecated)\n\n> This file is kept for external readers only. The authoritative YAML frontmatter (protagonist / prohibitions / genreLock / ...) now lives at the top of outline/story_frame.md. readBookRules() prefers that location and only falls back here for books initialized before Phase 5 cleanup #3.${excerpt}`;
+    }
+    if (language === "ru") {
+      const excerpt = trimmedBody
+        ? `\n\n## Выдержка из нарративных указаний\n\n${trimmedBody}\n`
+        : "";
+      return `# Правила книги (указатель совместимости — устарел)\n\n> Файл сохранён только для внешних читателей. Авторитетный YAML-frontmatter (protagonist / prohibitions / genreLock / …) теперь лежит в начале outline/story_frame.md. readBookRules() предпочитает именно его и обращается сюда лишь для книг, созданных до Phase 5 cleanup #3.${excerpt}`;
     }
     const excerpt = trimmedBody
       ? `\n\n## 叙事指引摘录\n\n${trimmedBody}\n`
@@ -758,7 +956,9 @@ Rules:
         join(storyDir, "character_matrix.md"),
         language === "en"
           ? "# Character Matrix\n\n<!-- One ## section per character. Add new characters as new ## blocks. -->\n"
-          : "# 角色矩阵\n\n<!-- 每个角色一个 ## 块，新角色追加新 ## 即可。 -->\n",
+          : language === "ru"
+            ? "# Матрица персонажей\n\n<!-- На каждого персонажа — отдельный ## блок. Новые персонажи добавляются новыми ## блоками. -->\n"
+            : "# 角色矩阵\n\n<!-- 每个角色一个 ## 块，新角色追加新 ## 即可。 -->\n",
         "utf-8",
       ));
 
@@ -767,14 +967,18 @@ Rules:
           ? output.currentState
           : (language === "en"
               ? "# Current State\n\n> Seeded at book creation. Runtime state is appended by the consolidator after each chapter.\n"
-              : "# 当前状态\n\n> 建书时占位。运行时每章之后由 consolidator 追加最新状态。\n");
+              : language === "ru"
+                ? "# Текущее состояние\n\n> Заглушка, выставленная при создании книги. Актуальное состояние после каждой главы дописывает консолидатор.\n"
+                : "# 当前状态\n\n> 建书时占位。运行时每章之后由 consolidator 追加最新状态。\n");
         writes.push(writeFile(join(storyDir, "current_state.md"), currentStateSeed, "utf-8"));
         writes.push(writeFile(join(storyDir, "pending_hooks.md"), output.pendingHooks, "utf-8"));
         writes.push(writeFile(
           join(storyDir, "emotional_arcs.md"),
           language === "en"
             ? "# Emotional Arcs\n\n| Character | Chapter | Emotional State | Trigger Event | Intensity (1-10) | Arc Direction |\n| --- | --- | --- | --- | --- | --- |\n"
-            : "# 情感弧线\n\n| 角色 | 章节 | 情绪状态 | 触发事件 | 强度(1-10) | 弧线方向 |\n|------|------|----------|----------|------------|----------|\n",
+            : language === "ru"
+              ? "# Эмоциональные дуги\n\n| Персонаж | Глава | Эмоциональное состояние | Триггер | Интенсивность (1–10) | Направление дуги |\n| --- | --- | --- | --- | --- | --- |\n"
+              : "# 情感弧线\n\n| 角色 | 章节 | 情绪状态 | 触发事件 | 强度(1-10) | 弧线方向 |\n|------|------|----------|----------|------------|----------|\n",
           "utf-8",
         ));
       }
@@ -804,7 +1008,12 @@ Rules:
     // and fight against the "no duplication" rule — readers who need the rhythm
     // content already pull it from volume_map's closing paragraph.
     if (rhythmPrinciples.trim()) {
-      const rhythmFileName = language === "en" ? "rhythm_principles.md" : "节奏原则.md";
+      const rhythmFileName =
+        language === "en"
+          ? "rhythm_principles.md"
+          : language === "ru"
+            ? "Принципы ритма.md"
+            : "节奏原则.md";
       writes.push(writeFile(join(outlineDir, rhythmFileName), rhythmPrinciples, "utf-8"));
     }
 
@@ -857,14 +1066,18 @@ Rules:
         ? output.currentState
         : (language === "en"
             ? "# Current State\n\n> Seeded at book creation. Runtime state is appended by the consolidator after each chapter. Initial per-character state lives in roles/*.Current_State; load-bearing initial world facts live in pending_hooks rows with start_chapter=0.\n"
-            : "# 当前状态\n\n> 建书时占位。运行时每章之后由 consolidator 追加最新状态。每个角色的初始状态详见 roles/*.当前现状；承重的初始世界设定见 pending_hooks 里 startChapter=0 的行。\n");
+            : language === "ru"
+              ? "# Текущее состояние\n\n> Заглушка, выставленная при создании книги. Актуальное состояние после каждой главы дописывает консолидатор. Стартовое состояние каждого персонажа — в roles/*.Текущее положение; несущие стартовые факты мира — в строках pending_hooks со startChapter=0.\n"
+              : "# 当前状态\n\n> 建书时占位。运行时每章之后由 consolidator 追加最新状态。每个角色的初始状态详见 roles/*.当前现状；承重的初始世界设定见 pending_hooks 里 startChapter=0 的行。\n");
       writes.push(writeFile(join(storyDir, "current_state.md"), currentStateSeed, "utf-8"));
       writes.push(writeFile(join(storyDir, "pending_hooks.md"), output.pendingHooks, "utf-8"));
       writes.push(writeFile(
         join(storyDir, "emotional_arcs.md"),
         language === "en"
           ? "# Emotional Arcs\n\n| Character | Chapter | Emotional State | Trigger Event | Intensity (1-10) | Arc Direction |\n| --- | --- | --- | --- | --- | --- |\n"
-          : "# 情感弧线\n\n| 角色 | 章节 | 情绪状态 | 触发事件 | 强度(1-10) | 弧线方向 |\n|------|------|----------|----------|------------|----------|\n",
+          : language === "ru"
+            ? "# Эмоциональные дуги\n\n| Персонаж | Глава | Эмоциональное состояние | Триггер | Интенсивность (1–10) | Направление дуги |\n| --- | --- | --- | --- | --- | --- |\n"
+            : "# 情感弧线\n\n| 角色 | 章节 | 情绪状态 | 触发事件 | 强度(1-10) | 弧线方向 |\n|------|------|----------|----------|------------|----------|\n",
         "utf-8",
       ));
     }
@@ -899,16 +1112,22 @@ Rules:
     const contextBlock = externalContext
       ? (resolvedLanguage === "en"
           ? `\n\n## External Instructions\n${externalContext}\n`
-          : `\n\n## 外部指令\n${externalContext}\n`)
+          : resolvedLanguage === "ru"
+            ? `\n\n## Внешние указания\n${externalContext}\n`
+            : `\n\n## 外部指令\n${externalContext}\n`)
       : "";
 
     const numericalBlock = gp.numericalSystem
       ? (resolvedLanguage === "en"
           ? "- The story uses a trackable numerical/resource system"
-          : "- 有明确的数值/资源体系可追踪")
+          : resolvedLanguage === "ru"
+            ? "- В произведении есть отслеживаемая система чисел/ресурсов"
+            : "- 有明确的数值/资源体系可追踪")
       : (resolvedLanguage === "en"
           ? "- No explicit numerical system"
-          : "- 本题材无数值系统");
+          : resolvedLanguage === "ru"
+            ? "- Явной числовой системы нет"
+            : "- 本题材无数值系统");
 
     const isSeries = options?.importMode === "series";
 
@@ -918,10 +1137,16 @@ Rules:
 The continuation portion must open up new narrative space — new conflict vector, new location, new time horizon. Ignite within 5 chapters; at least 50% fresh scenes.`
           : `## Continuation Direction
 Naturally extend the existing arc. Advance existing conflicts, pay off planted hooks, introduce new complications organically.`)
-      : (isSeries
-          ? `## 续写方向要求
+      : resolvedLanguage === "ru"
+        ? (isSeries
+            ? `## Требования к направлению продолжения
+Продолжение обязано открыть новое нарративное пространство — новый вектор конфликта, новую локацию, новый временной горизонт. Зажигание в первых 5 главах; не менее 50% свежих сцен.`
+            : `## Направление продолжения
+Естественно продолжай существующую дугу. Двигай уже заявленные конфликты, отдавай заложенные зацепки, вводи новые осложнения органично.`)
+        : (isSeries
+            ? `## 续写方向要求
 续写必须引入新叙事空间——新冲突、新地点、新时间。5章内引爆，50%以上场景新鲜。`
-          : `## 续写方向
+            : `## 续写方向
 自然延续已有叙事弧线。推进现有冲突、兑现已埋伏笔、引入有机新变数。`);
 
     const systemPrompt = resolvedLanguage === "en"
@@ -947,7 +1172,30 @@ Follow the consolidated 5-section === SECTION: === layout: story_frame, volume_m
 All prose must be derived from the source text. Do not invent settings. For volume_map, treat existing chapters as "review" (one paragraph) and continuation as prose chapter-level planning. Hook extraction must be complete (every unresolved clue).
 
 All output MUST be written in English.`
-      : `你是专业的网络小说架构师。从已有章节中反向推导散文密度的基础设定，同时设计续写路径。${contextBlock}${reviewFeedbackBlock}
+      : resolvedLanguage === "ru"
+        ? `Ты — профессиональный архитектор веб-литературы. Реверс-инжинирь по уже написанным главам прозаический фундамент книги и спроектируй путь продолжения.${contextBlock}${reviewFeedbackBlock}
+
+## Метаданные книги
+- Название: ${book.title}
+- Платформа: ${book.platform}
+- Жанр: ${gp.name} (${book.genre})
+- Целевое количество глав: ${book.targetChapters}
+- Объём главы: ${book.chapterWordCount}
+
+## Жанровая фактура
+${genreBody}
+
+${numericalBlock}
+
+${continuationDirective}
+
+## Контракт вывода
+Структура из 5 блоков === SECTION: ===: story_frame / volume_map / roles / book_rules / pending_hooks. **Не выводи отдельные секции rhythm_principles или current_state**: принципы ритма — в последнем абзаце volume_map; стартовое состояние персонажей — в роли (раздел «Текущее положение»); первичные зацепки — в pending_hooks (строки startChapter=0); средовой/временной якорь (только когда жанр привязан к реальному году — историческая проза, городская реинкарнация и т.п.) — в story_frame, абзаце «мироощущение». Прочие жанры — пропускай.
+
+Вся проза выводится из исходного текста, не выдумывай. В volume_map уже написанные главы оформи как «обзорный абзац»; продолжение — прозой на уровне томов. Извлечение зацепок должно быть полным (все непогашенные линии).
+
+Весь вывод обязан быть на русском языке.`
+        : `你是专业的网络小说架构师。从已有章节中反向推导散文密度的基础设定，同时设计续写路径。${contextBlock}${reviewFeedbackBlock}
 
 ## 书籍元信息
 - 标题：${book.title}
@@ -969,7 +1217,9 @@ ${continuationDirective}
 
     const userMessage = resolvedLanguage === "en"
       ? `Generate the complete foundation for an imported ${gp.name} novel titled "${book.title}". Write everything in English.\n\n${chaptersText}`
-      : `以下是《${book.title}》的全部已有正文，请从中反向推导完整基础设定：\n\n${chaptersText}`;
+      : resolvedLanguage === "ru"
+        ? `Ниже — полный текст уже написанных глав романа «${book.title}». Реверс-инжинирь по нему полный базовый сеттинг:\n\n${chaptersText}`
+        : `以下是《${book.title}》的全部已有正文，请从中反向推导完整基础设定：\n\n${chaptersText}`;
 
     const response = await this.chat([
       { role: "system", content: systemPrompt },
@@ -1053,6 +1303,13 @@ The previous foundation draft was rejected. You must explicitly fix the followin
 ${trimmed}\n`;
     }
 
+    if (language === "ru") {
+      return `\n\n## Отзыв с предыдущей проверки
+Предыдущий черновик фундамента не прошёл проверку. В этой регенерации нужно явно устранить перечисленные проблемы, а не пересобрать ту же схему другими словами:
+
+${trimmed}\n`;
+    }
+
     return `\n\n## 上一轮审核反馈
 上一轮基础设定未通过审核。你必须在这次重生中明确修复以下问题，不能只换措辞重写同一套方案：
 
@@ -1101,12 +1358,20 @@ ${trimmed}\n`;
       return section;
     }
 
-    const language: "zh" | "en" | "ru" = /[\u4e00-\u9fff]/.test(section) ? "zh" : "en";
+    const language: "zh" | "en" | "ru" = /[\u4e00-\u9fff]/.test(section)
+      ? "zh"
+      : /[\u0400-\u04ff]/.test(section)
+        ? "ru"
+        : "en";
     const normalizedHooks = dataRows.map((row, index) => {
       const rawProgress = row[4] ?? "";
       const normalizedProgress = this.parseHookChapterNumber(rawProgress);
       const seedNote = normalizedProgress === 0 && this.hasNarrativeProgress(rawProgress)
-        ? (language === "zh" ? `初始线索：${rawProgress}` : `initial signal: ${rawProgress}`)
+        ? (language === "zh"
+            ? `初始线索：${rawProgress}`
+            : language === "ru"
+              ? `Стартовый сигнал: ${rawProgress}`
+              : `initial signal: ${rawProgress}`)
         : "";
 
       const phase7 = row.length >= 12;
