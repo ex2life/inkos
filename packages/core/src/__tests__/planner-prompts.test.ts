@@ -1,9 +1,13 @@
 import { describe, it, expect } from "vitest";
 import {
   PLANNER_MEMO_SYSTEM_PROMPT,
+  PLANNER_MEMO_SYSTEM_PROMPT_RU,
   PLANNER_MEMO_USER_TEMPLATE,
+  PLANNER_MEMO_USER_TEMPLATE_RU,
   buildPlannerUserMessage,
   buildGoldenOpeningGuidance,
+  getPlannerMemoSystemPrompt,
+  getPlannerMemoUserTemplate,
 } from "../agents/planner-prompts.js";
 
 describe("PLANNER_MEMO_SYSTEM_PROMPT", () => {
@@ -167,5 +171,104 @@ describe("buildGoldenOpeningGuidance", () => {
 
     const ch4 = buildPlannerUserMessage({ ...base, chapterNumber: 4 });
     expect(ch4).not.toContain("黄金三章规划指引");
+  });
+});
+
+describe("Russian planner variants", () => {
+  it("PLANNER_MEMO_SYSTEM_PROMPT_RU carries the Russian methodology spine", () => {
+    expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).toContain("главный редактор");
+    expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).toContain("YAML frontmatter");
+    expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).toContain("реестр активных крючков");
+    expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).toContain("## 当前任务");
+    expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).toContain("## 不要做");
+    expect(PLANNER_MEMO_SYSTEM_PROMPT_RU.length).toBeGreaterThan(500);
+  });
+
+  it("PLANNER_MEMO_USER_TEMPLATE_RU carries every placeholder", () => {
+    const placeholders = [
+      "{{chapterNumber}}",
+      "{{previous_chapter_ending_excerpt}}",
+      "{{recent_summaries}}",
+      "{{current_arc_prose}}",
+      "{{protagonist_matrix_row}}",
+      "{{opponent_rows}}",
+      "{{collaborator_rows}}",
+      "{{relevant_threads}}",
+      "{{recyclable_hooks}}",
+      "{{isGoldenOpening}}",
+      "{{book_rules_relevant}}",
+    ];
+    for (const ph of placeholders) {
+      expect(PLANNER_MEMO_USER_TEMPLATE_RU).toContain(ph);
+    }
+  });
+
+  it("getPlannerMemoSystemPrompt and ...UserTemplate dispatch ru explicitly", () => {
+    expect(getPlannerMemoSystemPrompt("ru")).toBe(PLANNER_MEMO_SYSTEM_PROMPT_RU);
+    expect(getPlannerMemoUserTemplate("ru")).toBe(PLANNER_MEMO_USER_TEMPLATE_RU);
+    expect(getPlannerMemoSystemPrompt("zh")).toBe(PLANNER_MEMO_SYSTEM_PROMPT);
+    expect(getPlannerMemoUserTemplate("zh")).toBe(PLANNER_MEMO_USER_TEMPLATE);
+  });
+
+  it("buildPlannerUserMessage emits Russian template and translates the golden opening flag", () => {
+    const base = {
+      previousChapterEndingExcerpt: "Финал предыдущей главы",
+      recentSummaries: "| гл.9 | ... |",
+      currentArcProse: "Арка ведёт к двери 7",
+      protagonistMatrixRow: "| Артём | Протагонист | ... |",
+      opponentRows: "| Старик Ли | Противник | ... |",
+      collaboratorRows: "| Соня | Союзник | ... |",
+      relevantThreads: "- H03: незавершённое расшифрованное письмо",
+      recyclableHooks: "(старых крючков нет — реестр чист)",
+      bookRulesRelevant: "- Запрет на внезапное падение IQ протагониста",
+      language: "ru" as const,
+    };
+
+    const out = buildPlannerUserMessage({
+      ...base,
+      chapterNumber: 12,
+      isGoldenOpening: false,
+    });
+
+    expect(out).toContain("Заявка на memo для главы 12");
+    expect(out).toContain("Финал предыдущей главы");
+    expect(out).toContain("Соня");
+    expect(out).toContain("Глава из золотого открытия: нет");
+    expect(out).not.toContain("{{");
+
+    const goldenCh1 = buildPlannerUserMessage({
+      ...base,
+      chapterNumber: 1,
+      isGoldenOpening: true,
+    });
+    expect(goldenCh1).toContain("Глава из золотого открытия: да");
+    expect(goldenCh1).toContain("Дисциплина золотого открытия для планировщика");
+    expect(goldenCh1).toContain("глава 1");
+  });
+
+  it("buildGoldenOpeningGuidance(ch, 'ru') returns Russian prose for ch<=3 and empty for ch>=4", () => {
+    expect(buildGoldenOpeningGuidance(1, "ru")).toContain("золотого открытия");
+    expect(buildGoldenOpeningGuidance(3, "ru")).toContain("глава 3");
+    expect(buildGoldenOpeningGuidance(4, "ru")).toBe("");
+  });
+
+  it("Russian brief block is rendered when planning a Russian chapter with a brief", () => {
+    const out = buildPlannerUserMessage({
+      chapterNumber: 5,
+      previousChapterEndingExcerpt: "",
+      recentSummaries: "",
+      currentArcProse: "",
+      protagonistMatrixRow: "",
+      opponentRows: "",
+      collaboratorRows: "",
+      relevantThreads: "",
+      recyclableHooks: "",
+      isGoldenOpening: false,
+      bookRulesRelevant: "",
+      brief: "Главный герой — программист, который случайно открыл портал в прошлое.",
+      language: "ru",
+    });
+    expect(out).toContain("Творческий бриф пользователя");
+    expect(out).toContain("программист");
   });
 });
