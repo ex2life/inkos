@@ -59,7 +59,7 @@ function buildBookConfig(input: {
   readonly title: string;
   readonly genre?: string;
   readonly platform?: string;
-  readonly language?: "zh" | "en";
+  readonly language?: "zh" | "en" | "ru";
   readonly chapterWordCount?: number;
   readonly targetChapters?: number;
 }): BookConfig {
@@ -310,7 +310,7 @@ const CREATE_BOOK_TOOL: ToolDefinition = {
       platform: { type: "string", enum: ["tomato", "qidian", "feilu", "other"], description: "发布平台" },
       targetChapters: { type: "number", description: "目标章数，默认 200" },
       chapterWordCount: { type: "number", description: "每章字数，默认 3000" },
-      language: { type: "string", enum: ["zh", "en"], description: "写作语言，默认 zh" },
+      language: { type: "string", enum: ["zh", "en", "ru"], description: "写作语言，默认 zh（zh 中文 / en English / ru Russian）" },
       brief: { type: "string", description: "创意简述，会传给 Architect 智能体生成完整的世界观、主角、冲突等 foundation 文件。把用户提到的所有创意要素都写进这里。" },
     },
     required: ["title", "genre", "platform", "brief"],
@@ -354,7 +354,7 @@ function applyFieldsToDraft(
         draft.platform = value;
         break;
       case "language":
-        if (value === "zh" || value === "en") draft.language = value;
+        if (value === "zh" || value === "en" || value === "ru") draft.language = value;
         break;
       case "targetChapters": {
         const n = parseInt(value, 10);
@@ -497,7 +497,7 @@ export function createInteractionToolsFromDeps(
         title: (parsedArgs.title as string) ?? existingDraft?.title,
         genre: (parsedArgs.genre as string) ?? existingDraft?.genre,
         platform: (parsedArgs.platform as string) ?? existingDraft?.platform,
-        language: (parsedArgs.language as "zh" | "en") ?? existingDraft?.language,
+        language: (parsedArgs.language as "zh" | "en" | "ru") ?? existingDraft?.language,
         targetChapters: (parsedArgs.targetChapters as number) ?? existingDraft?.targetChapters,
         chapterWordCount: (parsedArgs.chapterWordCount as number) ?? existingDraft?.chapterWordCount,
         blurb: (parsedArgs.brief as string) ?? existingDraft?.blurb,

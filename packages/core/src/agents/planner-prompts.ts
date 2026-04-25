@@ -243,11 +243,11 @@ Produce the memo for chapter {{chapterNumber}}. Strictly emit YAML frontmatter +
  * Defaults to zh for backward compatibility — explicit "en" required for
  * the English variant.
  */
-export function getPlannerMemoSystemPrompt(language: "zh" | "en" = "zh"): string {
+export function getPlannerMemoSystemPrompt(language: "zh" | "en" | "ru" = "zh"): string {
   return language === "en" ? PLANNER_MEMO_SYSTEM_PROMPT_EN : PLANNER_MEMO_SYSTEM_PROMPT;
 }
 
-export function getPlannerMemoUserTemplate(language: "zh" | "en" = "zh"): string {
+export function getPlannerMemoUserTemplate(language: "zh" | "en" | "ru" = "zh"): string {
   return language === "en" ? PLANNER_MEMO_USER_TEMPLATE_EN : PLANNER_MEMO_USER_TEMPLATE;
 }
 
@@ -299,7 +299,7 @@ export interface PlannerUserMessageInput {
   readonly isGoldenOpening: boolean;
   readonly bookRulesRelevant: string;
   readonly brief?: string;
-  readonly language?: "zh" | "en";
+  readonly language?: "zh" | "en" | "ru";
 }
 
 export function buildPlannerUserMessage(input: PlannerUserMessageInput): string {
@@ -335,7 +335,7 @@ export function buildPlannerUserMessage(input: PlannerUserMessageInput): string 
  *
  * Returns "" when no brief exists (legacy books without brief.md).
  */
-function buildBriefBlock(brief: string, language: "zh" | "en"): string {
+function buildBriefBlock(brief: string, language: "zh" | "en" | "ru"): string {
   const trimmed = brief.trim();
   if (!trimmed) return "";
   if (language === "en") {
@@ -358,7 +358,7 @@ brief 是用户的直接指令。本章规划时，必须优先兑现 brief 里�
 
 export function buildGoldenOpeningGuidance(
   chapterNumber: number,
-  language: "zh" | "en" = "zh",
+  language: "zh" | "en" | "ru" = "zh",
 ): string {
   if (chapterNumber > 3) return "";
 

@@ -54,7 +54,7 @@ describe("validatePostWrite", () => {
       content: string,
       genreProfile: GenreProfile,
       bookRules: null,
-      languageOverride?: "zh" | "en",
+      languageOverride?: "zh" | "en" | "ru",
     ) => ReadonlyArray<PostWriteViolation>;
 
     const result = validateWithLanguage(content, baseProfile, null, "en");

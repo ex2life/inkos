@@ -57,7 +57,7 @@ export function isHookWithinChapterWindow(
   return hook.startChapter > chapterNumber && hook.startChapter <= chapterNumber + lookahead;
 }
 
-const LABELS: Record<"zh" | "en", Record<HookPayoffTiming, string>> = {
+const LABELS: Record<"zh" | "en" | "ru", Record<HookPayoffTiming, string>> = {
   en: {
     immediate: "immediate",
     "near-term": "near-term",
@@ -71,6 +71,13 @@ const LABELS: Record<"zh" | "en", Record<HookPayoffTiming, string>> = {
     "mid-arc": "中程",
     "slow-burn": "慢烧",
     endgame: "终局",
+  },
+  ru: {
+    immediate: "немедленно",
+    "near-term": "ближайшие главы",
+    "mid-arc": "середина арки",
+    "slow-burn": "медленное вызревание",
+    endgame: "финал",
   },
 };
 
@@ -136,7 +143,7 @@ export function resolveHookPayoffTiming(params: {
 
 export function localizeHookPayoffTiming(
   timing: HookPayoffTiming,
-  language: "zh" | "en",
+  language: "zh" | "en" | "ru",
 ): string {
   return LABELS[language][timing];
 }

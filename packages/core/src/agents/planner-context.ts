@@ -271,7 +271,7 @@ export function extractRelevantThreads(pendingHooksRaw: string, subplotBoardRaw:
 export function formatRecyclableHooks(
   hooks: ReadonlyArray<StoredHook>,
   chapterNumber: number,
-  language: "zh" | "en" = "zh",
+  language: "zh" | "en" | "ru" = "zh",
 ): string {
   if (hooks.length === 0) {
     return language === "en"
