@@ -7,23 +7,27 @@ import { initializeProjectDirectory } from "../project-bootstrap.js";
 export const initCommand = new Command("init")
   .description("Initialize an InkOS project (current directory by default)")
   .argument("[name]", "Project name (creates subdirectory). Omit to init current directory.")
-  .option("--lang <language>", "Default writing language: zh (Chinese) or en (English)", "zh")
+  .option("--lang <language>", "Default writing language: zh (Chinese), en (English) or ru (Russian)", "zh")
   .action(async (name: string | undefined, opts: { lang?: string }) => {
     const projectDir = name ? resolve(process.cwd(), name) : process.cwd();
 
     try {
       await mkdir(projectDir, { recursive: true });
+      const projectLanguage: "zh" | "en" | "ru" =
+        opts.lang === "en" ? "en" : opts.lang === "ru" ? "ru" : "zh";
       await initializeProjectDirectory(projectDir, {
-        language: (opts.lang === "en" ? "en" : "zh"),
+        language: projectLanguage,
         overwriteSupportFiles: true,
       });
 
       log(`Project initialized at ${projectDir}`);
       log("");
-      const isEnglish = (opts.lang ?? "zh") === "en";
-      const exampleCreate = isEnglish
-        ? "  inkos book create --title 'My Novel' --genre progression --platform royalroad --lang en"
-        : "  inkos book create --title '我的小说' --genre xuanhuan --platform tomato";
+      const exampleCreate =
+        projectLanguage === "en"
+          ? "  inkos book create --title 'My Novel' --genre progression --platform royalroad --lang en"
+          : projectLanguage === "ru"
+          ? "  inkos book create --title 'Моя книга' --genre urban --platform other --lang ru"
+          : "  inkos book create --title '我的小说' --genre xuanhuan --platform tomato";
       if (global) {
         log("Global LLM config detected. Ready to go!");
         log("");

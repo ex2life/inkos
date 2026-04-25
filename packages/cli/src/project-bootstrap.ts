@@ -3,7 +3,7 @@ import { basename, join } from "node:path";
 import { GLOBAL_ENV_PATH } from "./utils.js";
 
 export interface ProjectBootstrapOptions {
-  readonly language?: "zh" | "en";
+  readonly language?: "zh" | "en" | "ru";
   readonly overwriteSupportFiles?: boolean;
 }
 
@@ -32,7 +32,7 @@ async function writeMaybe(path: string, content: string, overwrite: boolean): Pr
   await writeFile(path, content, "utf-8");
 }
 
-function buildProjectConfig(projectDir: string, language: "zh" | "en") {
+function buildProjectConfig(projectDir: string, language: "zh" | "en" | "ru") {
   return {
     name: basename(projectDir),
     version: "0.1.0" as const,

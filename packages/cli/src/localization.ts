@@ -1,6 +1,6 @@
 import { formatLengthCount, resolveLengthCountingMode } from "@actalk/inkos-core";
 
-export type CliLanguage = "zh" | "en";
+export type CliLanguage = "zh" | "en" | "ru";
 
 type WriteIssue = {
   readonly severity: string;
@@ -26,12 +26,16 @@ type ImportResultShape = {
   readonly continueBookId: string;
 };
 
-function localize(language: CliLanguage, messages: { zh: string; en: string }): string {
-  return language === "en" ? messages.en : messages.zh;
+function localize(language: CliLanguage, messages: { zh: string; en: string; ru: string }): string {
+  if (language === "en") return messages.en;
+  if (language === "ru") return messages.ru;
+  return messages.zh;
 }
 
 export function resolveCliLanguage(language?: string): CliLanguage {
-  return language === "en" ? "en" : "zh";
+  if (language === "en") return "en";
+  if (language === "ru") return "ru";
+  return "zh";
 }
 
 export function formatBookCreateCreating(
@@ -43,6 +47,7 @@ export function formatBookCreateCreating(
   return localize(language, {
     zh: `创建书籍 "${title}"（${genre} / ${platform}）...`,
     en: `Creating book "${title}" (${genre} / ${platform})...`,
+    ru: `Создаю книгу «${title}» (${genre} / ${platform})...`,
   });
 }
 
@@ -50,6 +55,7 @@ export function formatBookCreateCreated(language: CliLanguage, bookId: string): 
   return localize(language, {
     zh: `已创建书籍：${bookId}`,
     en: `Book created: ${bookId}`,
+    ru: `Книга создана: ${bookId}`,
   });
 }
 
@@ -57,6 +63,7 @@ export function formatBookCreateLocation(language: CliLanguage, bookId: string):
   return localize(language, {
     zh: `  位置：books/${bookId}/`,
     en: `  Location: books/${bookId}/`,
+    ru: `  Расположение: books/${bookId}/`,
   });
 }
 
@@ -64,6 +71,7 @@ export function formatBookCreateFoundationReady(language: CliLanguage): string {
   return localize(language, {
     zh: "  故事圣经、大纲和书籍规则已生成。",
     en: "  Story bible, outline, book rules generated.",
+    ru: "  Сгенерированы story bible, план и правила книги.",
   });
 }
 
@@ -71,6 +79,7 @@ export function formatBookCreateNextStep(language: CliLanguage, bookId: string):
   return localize(language, {
     zh: `下一步：inkos write next ${bookId}`,
     en: `Next: inkos write next ${bookId}`,
+    ru: `Дальше: inkos write next ${bookId}`,
   });
 }
 
@@ -83,6 +92,7 @@ export function formatWriteNextProgress(
   return localize(language, {
     zh: `[${current}/${total}] 为「${bookId}」撰写章节...`,
     en: `[${current}/${total}] Writing chapter for "${bookId}"...`,
+    ru: `[${current}/${total}] Пишу главу для «${bookId}»...`,
   });
 }
 
@@ -96,14 +106,17 @@ export function formatWriteNextResultLines(
     localize(language, {
       zh: `  第${result.chapterNumber}章：${result.title}`,
       en: `  Chapter ${result.chapterNumber}: ${result.title}`,
+      ru: `  Глава ${result.chapterNumber}: ${result.title}`,
     }),
     localize(language, {
       zh: `  字数：${lengthLabel}`,
       en: `  Length: ${lengthLabel}`,
+      ru: `  Объём: ${lengthLabel}`,
     }),
     localize(language, {
       zh: `  审计：${auditPassed ? "通过" : "需复核"}`,
       en: `  Audit: ${auditPassed ? "PASSED" : "NEEDS REVIEW"}`,
+      ru: `  Аудит: ${auditPassed ? "пройден" : "нужна ревизия"}`,
     }),
   ];
 
@@ -111,18 +124,21 @@ export function formatWriteNextResultLines(
     lines.push(localize(language, {
       zh: "  自动修正：已执行（已修复关键问题）",
       en: "  Auto-revised: YES (critical issues were fixed)",
+      ru: "  Авто-правка: выполнена (критичные замечания закрыты)",
     }));
   }
 
   lines.push(localize(language, {
     zh: `  状态：${result.status}`,
     en: `  Status: ${result.status}`,
+    ru: `  Статус: ${result.status}`,
   }));
 
   if (result.issues.length > 0) {
     lines.push(localize(language, {
       zh: "  问题：",
       en: "  Issues:",
+      ru: "  Замечания:",
     }));
     for (const issue of result.issues) {
       lines.push(`    [${issue.severity}] ${issue.category}: ${issue.description}`);
@@ -136,6 +152,7 @@ export function formatWriteNextComplete(language: CliLanguage): string {
   return localize(language, {
     zh: "完成。",
     en: "Done.",
+    ru: "Готово.",
   });
 }
 
@@ -147,6 +164,7 @@ export function formatImportChaptersDiscovery(
   return localize(language, {
     zh: `发现 ${chapterCount} 章，准备导入到「${bookId}」。`,
     en: `Found ${chapterCount} chapters to import into "${bookId}".`,
+    ru: `Найдено глав: ${chapterCount}. Импортирую в «${bookId}».`,
   });
 }
 
@@ -157,6 +175,7 @@ export function formatImportChaptersResume(
   return localize(language, {
     zh: `从第 ${resumeFrom} 章继续导入。`,
     en: `Resuming from chapter ${resumeFrom}.`,
+    ru: `Возобновляю импорт с главы ${resumeFrom}.`,
   });
 }
 
@@ -169,23 +188,28 @@ export function formatImportChaptersComplete(
     localize(language, {
       zh: "导入完成：",
       en: "Import complete:",
+      ru: "Импорт завершён:",
     }),
     localize(language, {
       zh: `  已导入章节：${result.importedCount}`,
       en: `  Chapters imported: ${result.importedCount}`,
+      ru: `  Импортировано глав: ${result.importedCount}`,
     }),
     localize(language, {
       zh: `  总长度：${lengthLabel}`,
       en: `  Total length: ${lengthLabel}`,
+      ru: `  Общий объём: ${lengthLabel}`,
     }),
     localize(language, {
       zh: `  下一章编号：${result.nextChapter}`,
       en: `  Next chapter number: ${result.nextChapter}`,
+      ru: `  Номер следующей главы: ${result.nextChapter}`,
     }),
     "",
     localize(language, {
       zh: `运行 "inkos write next ${result.continueBookId}" 继续写作。`,
       en: `Run "inkos write next ${result.continueBookId}" to continue writing.`,
+      ru: `Запусти «inkos write next ${result.continueBookId}», чтобы продолжить писать.`,
     }),
   ];
 }
@@ -198,6 +222,7 @@ export function formatImportCanonStart(
   return localize(language, {
     zh: `把 "${parentBookId}" 的正典导入到 "${targetBookId}"...`,
     en: `Importing canon from "${parentBookId}" into "${targetBookId}"...`,
+    ru: `Импортирую канон из «${parentBookId}» в «${targetBookId}»...`,
   });
 }
 
@@ -206,10 +231,12 @@ export function formatImportCanonComplete(language: CliLanguage): string[] {
     localize(language, {
       zh: "正典已导入：story/parent_canon.md",
       en: "Canon imported: story/parent_canon.md",
+      ru: "Канон импортирован: story/parent_canon.md",
     }),
     localize(language, {
       zh: "Writer 和 auditor 会在番外模式下自动识别这个文件。",
       en: "Writer and auditor will auto-detect this file for spinoff mode.",
+      ru: "Writer и auditor автоматически подхватят этот файл в режиме спин-оффа.",
     }),
   ];
 }

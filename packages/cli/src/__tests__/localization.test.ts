@@ -11,6 +11,7 @@ import {
   formatWriteNextComplete,
   formatWriteNextProgress,
   formatWriteNextResultLines,
+  resolveCliLanguage,
 } from "../localization.js";
 
 describe("CLI localization", () => {
@@ -116,6 +117,69 @@ describe("CLI localization", () => {
     expect(formatImportCanonComplete("en")).toEqual([
       "Canon imported: story/parent_canon.md",
       "Writer and auditor will auto-detect this file for spinoff mode.",
+    ]);
+  });
+
+  it("resolves the ru language explicitly and falls back to zh otherwise", () => {
+    expect(resolveCliLanguage("ru")).toBe("ru");
+    expect(resolveCliLanguage("en")).toBe("en");
+    expect(resolveCliLanguage("zh")).toBe("zh");
+    expect(resolveCliLanguage("xx")).toBe("zh");
+    expect(resolveCliLanguage(undefined)).toBe("zh");
+  });
+
+  it("formats book-create / write-next / import flows in Russian", () => {
+    expect(formatBookCreateCreating("ru", "Моя книга", "urban", "other"))
+      .toBe('Создаю книгу «Моя книга» (urban / other)...');
+    expect(formatBookCreateCreated("ru", "moya-kniga"))
+      .toBe("Книга создана: moya-kniga");
+    expect(formatBookCreateNextStep("ru", "moya-kniga"))
+      .toBe("Дальше: inkos write next moya-kniga");
+
+    expect(formatWriteNextProgress("ru", 1, 5, "moya-kniga"))
+      .toBe('[1/5] Пишу главу для «moya-kniga»...');
+    expect(formatWriteNextComplete("ru")).toBe("Готово.");
+    expect(formatWriteNextResultLines("ru", {
+      chapterNumber: 7,
+      title: "Дверь номер семь",
+      wordCount: 2200,
+      status: "ready-for-review",
+      revised: true,
+      issues: [{ severity: "critical", category: "continuity", description: "Несостыковка" }],
+      auditPassed: false,
+    })).toEqual([
+      "  Глава 7: Дверь номер семь",
+      "  Объём: 2200 words",
+      "  Аудит: нужна ревизия",
+      "  Авто-правка: выполнена (критичные замечания закрыты)",
+      "  Статус: ready-for-review",
+      "  Замечания:",
+      "    [critical] continuity: Несостыковка",
+    ]);
+
+    expect(formatImportChaptersDiscovery("ru", 12, "moya-kniga"))
+      .toBe('Найдено глав: 12. Импортирую в «moya-kniga».');
+    expect(formatImportChaptersResume("ru", 6))
+      .toBe("Возобновляю импорт с главы 6.");
+    expect(formatImportChaptersComplete("ru", {
+      importedCount: 12,
+      totalWords: 31415,
+      nextChapter: 13,
+      continueBookId: "moya-kniga",
+    })).toEqual([
+      "Импорт завершён:",
+      "  Импортировано глав: 12",
+      "  Общий объём: 31415 words",
+      "  Номер следующей главы: 13",
+      "",
+      'Запусти «inkos write next moya-kniga», чтобы продолжить писать.',
+    ]);
+
+    expect(formatImportCanonStart("ru", "parent-book", "target-book"))
+      .toBe('Импортирую канон из «parent-book» в «target-book»...');
+    expect(formatImportCanonComplete("ru")).toEqual([
+      "Канон импортирован: story/parent_canon.md",
+      "Writer и auditor автоматически подхватят этот файл в режиме спин-оффа.",
     ]);
   });
 });
