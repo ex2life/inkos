@@ -192,6 +192,97 @@ describe("ChapterAnalyzerAgent", () => {
     }
   });
 
+  it("uses Russian prompts when analyzing imported Russian chapters", async () => {
+    const bookDir = await mkdtemp(join(tmpdir(), "inkos-chapter-analyzer-ru-"));
+    const russianContent = "Он посмотрел в небо и стал ждать.";
+    const agent = new ChapterAnalyzerAgent({
+      client: {
+        provider: "openai",
+        apiFormat: "chat",
+        stream: false,
+        defaults: {
+          temperature: 0.7,
+          maxTokens: 4096,
+          thinkingBudget: 0,
+          extra: {},
+        },
+      },
+      model: "test-model",
+      projectRoot: process.cwd(),
+    });
+
+    const book: BookConfig = {
+      id: "russian-book",
+      title: "Russian Book",
+      platform: "other",
+      genre: "other",
+      status: "active",
+      targetChapters: 10,
+      chapterWordCount: 2200,
+      language: "ru",
+      createdAt: "2026-03-22T00:00:00.000Z",
+      updatedAt: "2026-03-22T00:00:00.000Z",
+    };
+
+    const chat = vi.spyOn(agent as unknown as { chat: (...args: unknown[]) => Promise<unknown> }, "chat")
+      .mockResolvedValue({
+        content: [
+          "=== CHAPTER_TITLE ===",
+          "Тихое небо",
+          "",
+          "=== CHAPTER_CONTENT ===",
+          russianContent,
+          "",
+          "=== PRE_WRITE_CHECK ===",
+          "",
+          "=== POST_SETTLEMENT ===",
+          "",
+          "=== UPDATED_STATE ===",
+          "| Поле | Значение |",
+          "| --- | --- |",
+          "| Текущая глава | 1 |",
+          "",
+          "=== UPDATED_LEDGER ===",
+          "",
+          "=== UPDATED_HOOKS ===",
+          "| hook_id | status |",
+          "| --- | --- |",
+          "| h1 | open |",
+          "",
+          "=== CHAPTER_SUMMARY ===",
+          "| 1 | Тихое небо |",
+          "",
+          "=== UPDATED_SUBPLOTS ===",
+          "",
+          "=== UPDATED_EMOTIONAL_ARCS ===",
+          "",
+          "=== UPDATED_CHARACTER_MATRIX ===",
+          "",
+        ].join("\n"),
+        usage: ZERO_USAGE,
+      });
+
+    try {
+      await agent.analyzeChapter({
+        book,
+        bookDir,
+        chapterNumber: 1,
+        chapterContent: russianContent,
+        chapterTitle: "Тихое небо",
+      });
+
+      const messages = chat.mock.calls[0]?.[0] as Array<{ role: string; content: string }>;
+      expect(messages[0]?.content).toContain("Весь вывод ДОЛЖЕН быть на русском языке");
+      expect(messages[1]?.content).toContain("Проанализируй главу 1");
+      expect(messages[1]?.content).toContain("## Текст главы");
+      expect(messages[1]?.content).toContain("## Текущее состояние");
+      expect(messages[1]?.content).not.toContain("请分析第1章正文");
+      expect(messages[1]?.content).not.toContain("Analyze chapter 1");
+    } finally {
+      await rm(bookDir, { recursive: true, force: true });
+    }
+  });
+
   it("uses a retrieved summary snapshot instead of full long-history chapter summaries", async () => {
     const bookDir = await mkdtemp(join(tmpdir(), "inkos-chapter-analyzer-memory-"));
     const storyDir = join(bookDir, "story");

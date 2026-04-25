@@ -116,15 +116,17 @@ export class WriterAgent extends BaseAgent {
     return "writer";
   }
 
-  private localize(language: "zh" | "en" | "ru", messages: { zh: string; en: string }): string {
-    return language === "en" ? messages.en : messages.zh;
+  private localize(language: "zh" | "en" | "ru", messages: { zh: string; en: string; ru: string }): string {
+    if (language === "en") return messages.en;
+    if (language === "ru") return messages.ru;
+    return messages.zh;
   }
 
-  private logInfo(language: "zh" | "en" | "ru", messages: { zh: string; en: string }): void {
+  private logInfo(language: "zh" | "en" | "ru", messages: { zh: string; en: string; ru: string }): void {
     this.ctx.logger?.info(this.localize(language, messages));
   }
 
-  private logWarn(language: "zh" | "en" | "ru", messages: { zh: string; en: string }): void {
+  private logWarn(language: "zh" | "en" | "ru", messages: { zh: string; en: string; ru: string }): void {
     this.ctx.logger?.warn(this.localize(language, messages));
   }
 
@@ -258,6 +260,7 @@ export class WriterAgent extends BaseAgent {
     this.logInfo(resolvedLanguage, {
       zh: `阶段 1：创作正文（第${chapterNumber}章）`,
       en: `Phase 1: creative writing for chapter ${chapterNumber}`,
+      ru: `Фаза 1: написание текста (глава ${chapterNumber})`,
     });
 
     // Scale maxTokens to chapter word count (Chinese ≈ 1.5 tokens/char)
@@ -285,6 +288,7 @@ export class WriterAgent extends BaseAgent {
     this.logInfo(resolvedLanguage, {
       zh: `阶段 2：状态结算（第${chapterNumber}章，${creative.wordCount}字）`,
       en: `Phase 2: state settlement for chapter ${chapterNumber} (${creative.wordCount} words)`,
+      ru: `Фаза 2: расчёт состояния (глава ${chapterNumber}, ${creative.wordCount} слов)`,
     });
     const isGovernedSettlement = Boolean(input.chapterIntent && input.contextPackage && input.ruleStack);
     const filteredHooksForSettlement = isGovernedSettlement && input.contextPackage
@@ -375,6 +379,7 @@ export class WriterAgent extends BaseAgent {
       this.logWarn(resolvedLanguage, {
         zh: `后写校验：第${chapterNumber}章 ${postWriteErrors.length} 个错误，${postWriteWarnings.length} 个警告`,
         en: `Post-write: ${postWriteErrors.length} errors, ${postWriteWarnings.length} warnings in chapter ${chapterNumber}`,
+        ru: `Постпроверка: ${postWriteErrors.length} ошибок, ${postWriteWarnings.length} предупреждений в главе ${chapterNumber}`,
       });
       for (const v of ruleViolations) {
         this.ctx.logger?.warn(`[${v.severity}] ${v.rule}: ${v.description}`);
@@ -384,6 +389,7 @@ export class WriterAgent extends BaseAgent {
       this.logWarn(resolvedLanguage, {
         zh: `AI 味检查：第${chapterNumber}章发现 ${aiTellIssues.length} 个问题`,
         en: `AI-tell check: ${aiTellIssues.length} issues in chapter ${chapterNumber}`,
+        ru: `Проверка AI-следов: найдено ${aiTellIssues.length} замечаний в главе ${chapterNumber}`,
       });
       for (const issue of aiTellIssues) {
         this.ctx.logger?.warn(`[${issue.severity}] ${issue.category}: ${issue.description}`);
@@ -393,6 +399,7 @@ export class WriterAgent extends BaseAgent {
       this.logWarn(resolvedLanguage, {
         zh: `伏笔健康：第${chapterNumber}章发现 ${hookHealthIssues.length} 条警告`,
         en: `Hook health: ${hookHealthIssues.length} warning(s) in chapter ${chapterNumber}`,
+        ru: `Здоровье крючков: ${hookHealthIssues.length} предупреждений в главе ${chapterNumber}`,
       });
       for (const issue of hookHealthIssues) {
         this.ctx.logger?.warn(`[${issue.severity}] ${issue.category}: ${issue.description}`);
@@ -565,6 +572,7 @@ export class WriterAgent extends BaseAgent {
     this.logInfo(resolvedLang, {
       zh: `阶段 2a：提取第${params.chapterNumber}章事实`,
       en: `Phase 2a: observing facts for chapter ${params.chapterNumber}`,
+      ru: `Фаза 2a: извлекаю факты главы ${params.chapterNumber}`,
     });
     const observerResponse = await this.chat(
       [
@@ -579,6 +587,7 @@ export class WriterAgent extends BaseAgent {
     this.logInfo(resolvedLang, {
       zh: "阶段 2b：把观察结果回写到真相文件",
       en: "Phase 2b: reflecting observations into truth files",
+      ru: "Фаза 2b: переношу наблюдения в truth-файлы",
     });
     const settlerSystem = buildSettlerSystemPrompt(
       params.book, params.genreProfile, params.bookRules, resolvedLang,
@@ -676,9 +685,12 @@ export class WriterAgent extends BaseAgent {
     const paddedNum = String(output.chapterNumber).padStart(4, "0");
     const filename = `${paddedNum}_${this.sanitizeFilename(output.title)}.md`;
 
-    const heading = language === "en"
-      ? `# Chapter ${output.chapterNumber}: ${output.title}`
-      : `# 第${output.chapterNumber}章 ${output.title}`;
+    const heading =
+      language === "en"
+        ? `# Chapter ${output.chapterNumber}: ${output.title}`
+        : language === "ru"
+        ? `# Глава ${output.chapterNumber}. ${output.title}`
+        : `# 第${output.chapterNumber}章 ${output.title}`;
     const chapterContent = [
       heading,
       "",
@@ -792,6 +804,26 @@ ${lengthRequirementBlock}
 - Output only PRE_WRITE_CHECK, CHAPTER_TITLE, and CHAPTER_CONTENT blocks`;
     }
 
+    if (params.language === "ru") {
+      return `Напиши главу ${params.chapterNumber}.
+${contextBlock}
+## Текущее состояние
+${params.currentState}
+${ledgerBlock}
+## Сюжетные линии
+${params.hooks}
+${summariesBlock}${subplotBlock}${emotionalBlock}${matrixBlock}${fingerprintBlock}${relevantBlock}${canonBlock}
+## Недавние главы
+${params.recentChapters || "(Это первая глава, предыдущего текста нет.)"}
+
+## Сеттинг
+${params.storyBible}
+
+${lengthRequirementBlock}
+- Сначала выпусти PRE_WRITE_CHECK, потом саму главу.
+- Выводи только три блока: PRE_WRITE_CHECK, CHAPTER_TITLE и CHAPTER_CONTENT.`;
+    }
+
     return `请续写第${params.chapterNumber}章。
 ${contextBlock}
 ## 当前状态卡
@@ -859,6 +891,26 @@ ${varianceBlock}
 ${lengthRequirementBlock}
 - Output PRE_WRITE_CHECK first, then the chapter
 - Output only PRE_WRITE_CHECK, CHAPTER_TITLE, and CHAPTER_CONTENT blocks`;
+    }
+
+    if (params.language === "ru") {
+      return `Напиши главу ${params.chapterNumber}.
+
+${briefNarrative}
+
+## Подобранный контекст
+${contextSections || "(пусто)"}
+${selectedEvidenceBlock}
+
+## Стек правил
+- Жёсткие: ${params.ruleStack.sections.hard.join(", ") || "(нет)"}
+- Мягкие: ${params.ruleStack.sections.soft.join(", ") || "(нет)"}
+- Диагностические: ${diagnosticLines}
+
+${varianceBlock}
+${lengthRequirementBlock}
+- Сначала выпусти PRE_WRITE_CHECK, потом саму главу.
+- Выводи только три блока: PRE_WRITE_CHECK, CHAPTER_TITLE и CHAPTER_CONTENT.`;
     }
 
     return `请续写第${params.chapterNumber}章。
@@ -931,6 +983,22 @@ ${selectedContext || "- none"}
 ${overrides}\n`;
     }
 
+    if (language === "ru") {
+      return `\n## Управляющие входы главы
+${narrativeIntent || "(пусто)"}
+
+### Подобранный контекст
+${selectedContext || "- пусто"}
+
+### Стек правил
+- Жёсткие ограничители: ${ruleStack.sections.hard.join(", ") || "(нет)"}
+- Мягкие ограничения: ${ruleStack.sections.soft.join(", ") || "(нет)"}
+- Диагностические правила: ${ruleStack.sections.diagnostic.join(", ") || "(нет)"}
+
+### Активные переопределения
+${overrides}\n`;
+    }
+
     return `\n## 本章控制输入
 ${narrativeIntent || "(无)"}
 
@@ -963,6 +1031,7 @@ ${overrides}\n`;
       this.logWarn(language, {
         zh: `第${chapterNumber}章 PRE_WRITE_CHECK 为空，无法对齐 chapter_memo`,
         en: `Chapter ${chapterNumber} PRE_WRITE_CHECK is empty; cannot verify memo alignment`,
+        ru: `PRE_WRITE_CHECK главы ${chapterNumber} пустой; не получается сверить с chapter_memo`,
       });
       return;
     }
@@ -976,6 +1045,7 @@ ${overrides}\n`;
       this.logWarn(language, {
         zh: `第${chapterNumber}章 PRE_WRITE_CHECK 缺少 memo 章节检查：${missing.join("、")}`,
         en: `Chapter ${chapterNumber} PRE_WRITE_CHECK missing memo sections: ${missing.join(", ")}`,
+        ru: `PRE_WRITE_CHECK главы ${chapterNumber} не содержит разделы памятки: ${missing.join(", ")}`,
       });
     }
   }
@@ -985,6 +1055,12 @@ ${overrides}\n`;
       return `Requirements:
 - Target length: ${lengthSpec.target} words
 - Acceptable range: ${lengthSpec.softMin}-${lengthSpec.softMax} words`;
+    }
+
+    if (language === "ru") {
+      return `Требования:
+- Цель: ${lengthSpec.target} слов
+- Допустимый диапазон: ${lengthSpec.softMin}–${lengthSpec.softMax} слов`;
     }
 
     return `要求：
@@ -1196,9 +1272,12 @@ ${overrides}\n`;
       existing = await readFile(summaryPath, "utf-8");
     } catch {
       // File doesn't exist yet — start with header
-      existing = language === "en"
-        ? "# Chapter Summaries\n\n| Chapter | Title | Characters | Key Events | State Changes | Hook Activity | Mood | Chapter Type |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n"
-        : "# 章节摘要\n\n| 章节 | 标题 | 出场人物 | 关键事件 | 状态变化 | 伏笔动态 | 情绪基调 | 章节类型 |\n|------|------|----------|----------|----------|----------|----------|----------|\n";
+      existing =
+        language === "en"
+          ? "# Chapter Summaries\n\n| Chapter | Title | Characters | Key Events | State Changes | Hook Activity | Mood | Chapter Type |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n"
+          : language === "ru"
+          ? "# Сводки глав\n\n| Глава | Название | Персонажи | Ключевые события | Изменения состояния | Динамика крючков | Тональность | Тип главы |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n"
+          : "# 章节摘要\n\n| 章节 | 标题 | 出场人物 | 关键事件 | 状态变化 | 伏笔动态 | 情绪基调 | 章节类型 |\n|------|------|----------|----------|----------|----------|----------|----------|\n";
     }
 
     // Extract only the data row(s) from the summary (skip header lines)

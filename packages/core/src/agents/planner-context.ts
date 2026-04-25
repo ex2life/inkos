@@ -274,9 +274,9 @@ export function formatRecyclableHooks(
   language: "zh" | "en" | "ru" = "zh",
 ): string {
   if (hooks.length === 0) {
-    return language === "en"
-      ? "(no stale hooks — the ledger is clean)"
-      : "（暂无陈旧 hook——账本干净）";
+    if (language === "en") return "(no stale hooks — the ledger is clean)";
+    if (language === "ru") return "(старых крючков нет — реестр чист)";
+    return "（暂无陈旧 hook——账本干净）";
   }
 
   const topSlice = hooks.slice(0, 6);
@@ -284,14 +284,24 @@ export function formatRecyclableHooks(
     const lastTouch = Math.max(hook.startChapter, hook.lastAdvancedChapter);
     const silence = lastTouch <= 0 ? chapterNumber : Math.max(0, chapterNumber - lastTouch);
     const payoff = hook.expectedPayoff?.trim() || hook.notes?.trim() || "";
-    const core = hook.coreHook === true ? (language === "en" ? " [core]" : " [核心]") : "";
-    return language === "en"
-      ? `- ${hook.hookId} "${payoff}" — status=${hook.status}, silent ${silence} ch${core}`
-      : `- ${hook.hookId} "${payoff}" — 状态=${hook.status}，已沉默 ${silence} 章${core}`;
+    const core =
+      hook.coreHook === true
+        ? language === "en"
+          ? " [core]"
+          : language === "ru"
+          ? " [ключевой]"
+          : " [核心]"
+        : "";
+    if (language === "en") return `- ${hook.hookId} "${payoff}" — status=${hook.status}, silent ${silence} ch${core}`;
+    if (language === "ru") return `- ${hook.hookId} «${payoff}» — статус=${hook.status}, молчит ${silence} гл.${core}`;
+    return `- ${hook.hookId} "${payoff}" — 状态=${hook.status}，已沉默 ${silence} 章${core}`;
   });
 
-  const header = language === "en"
-    ? "The planner MUST place each of these under advance / resolve / defer in the hook ledger (deferring requires an explicit reason):"
-    : "规划时必须把以下每个 hook 放入 advance / resolve / defer（若 defer，必须写出理由）：";
+  const header =
+    language === "en"
+      ? "The planner MUST place each of these under advance / resolve / defer in the hook ledger (deferring requires an explicit reason):"
+      : language === "ru"
+      ? "Планировщик ОБЯЗАН разместить каждый из этих крючков в advance / resolve / defer (для defer нужна явная причина):"
+      : "规划时必须把以下每个 hook 放入 advance / resolve / defer（若 defer，必须写出理由）：";
   return [header, ...lines].join("\n");
 }

@@ -197,18 +197,30 @@ export class PlannerAgent extends BaseAgent {
     ]);
 
     const language = input.language ?? "zh";
-    const noPriorChapter = language === "en"
-      ? "(this is the opening chapter — no prior chapter)"
-      : "（本章为起始章，无前章）";
-    const noBookRules = language === "en"
-      ? "(no book_rules entries)"
-      : "（暂无 book_rules 条目）";
-    const retryFeedbackHeader = language === "en"
-      ? "## Error from previous output"
-      : "## 上次输出的错误";
-    const retryFeedbackTrailer = language === "en"
-      ? "Fix and re-emit."
-      : "请修正后重新输出。";
+    const noPriorChapter =
+      language === "en"
+        ? "(this is the opening chapter — no prior chapter)"
+        : language === "ru"
+        ? "(это первая глава — предыдущей нет)"
+        : "（本章为起始章，无前章）";
+    const noBookRules =
+      language === "en"
+        ? "(no book_rules entries)"
+        : language === "ru"
+        ? "(в book_rules пока нет записей)"
+        : "（暂无 book_rules 条目）";
+    const retryFeedbackHeader =
+      language === "en"
+        ? "## Error from previous output"
+        : language === "ru"
+        ? "## Ошибка предыдущего вывода"
+        : "## 上次输出的错误";
+    const retryFeedbackTrailer =
+      language === "en"
+        ? "Fix and re-emit."
+        : language === "ru"
+        ? "Исправь и выпусти снова."
+        : "请修正后重新输出。";
 
     const userMessage = buildPlannerUserMessage({
       chapterNumber: input.chapterNumber,
@@ -410,14 +422,18 @@ export class PlannerAgent extends BaseAgent {
   private renderHookBudget(activeCount: number, language: "zh" | "en" | "ru"): string {
     const cap = 12;
     if (activeCount < 10) {
-      return language === "en"
-        ? `### Hook Budget\n- ${activeCount} active hooks (capacity: ${cap})`
-        : `### 伏笔预算\n- 当前 ${activeCount} 条活跃伏笔（容量：${cap}）`;
+      if (language === "en") return `### Hook Budget\n- ${activeCount} active hooks (capacity: ${cap})`;
+      if (language === "ru") return `### Бюджет крючков\n- ${activeCount} активных крючков (вместимость: ${cap})`;
+      return `### 伏笔预算\n- 当前 ${activeCount} 条活跃伏笔（容量：${cap}）`;
     }
     const remaining = Math.max(0, cap - activeCount);
-    return language === "en"
-      ? `### Hook Budget\n- ${activeCount} active hooks — approaching capacity (${cap}). Only ${remaining} new hook(s) allowed. Prioritize resolving existing debt over opening new threads.`
-      : `### 伏笔预算\n- 当前 ${activeCount} 条活跃伏笔——接近容量上限（${cap}）。仅剩 ${remaining} 个新坑位。优先回收旧债，不要轻易开新线。`;
+    if (language === "en") {
+      return `### Hook Budget\n- ${activeCount} active hooks — approaching capacity (${cap}). Only ${remaining} new hook(s) allowed. Prioritize resolving existing debt over opening new threads.`;
+    }
+    if (language === "ru") {
+      return `### Бюджет крючков\n- ${activeCount} активных крючков — близко к пределу (${cap}). Можно открыть ещё всего ${remaining}. Сначала закрывай старые долги, потом плоди новые линии.`;
+    }
+    return `### 伏笔预算\n- 当前 ${activeCount} 条活跃伏笔——接近容量上限（${cap}）。仅剩 ${remaining} 个新坑位。优先回收旧债，不要轻易开新线。`;
   }
 
   private extractSection(content: string, headings: ReadonlyArray<string>): string | undefined {

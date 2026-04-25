@@ -332,8 +332,17 @@ async function buildHookDebtEntries(
 
       const seedSummary = findHookSummary(summaries, hook.hookId, hook.startChapter, "seed");
       const latestSummary = findHookSummary(summaries, hook.hookId, hook.lastAdvancedChapter, "latest");
-      const role = language === "en" ? "memo-referenced debt" : "备忘引用旧债";
-      const promise = hook.expectedPayoff || (language === "en" ? "(unspecified)" : "（未写明）");
+      const role = language === "en"
+        ? "memo-referenced debt"
+        : language === "ru"
+        ? "долг из памятки"
+        : "备忘引用旧债";
+      const promise = hook.expectedPayoff
+        || (language === "en"
+          ? "(unspecified)"
+          : language === "ru"
+          ? "(не указано)"
+          : "（未写明）");
       const seedBeat = seedSummary
         ? renderHookDebtBeat(seedSummary)
         : (hook.notes || promise);
@@ -341,6 +350,19 @@ async function buildHookDebtEntries(
         ? renderHookDebtBeat(latestSummary)
         : undefined;
       const age = Math.max(0, plan.intent.chapter - Math.max(1, hook.startChapter));
+
+      if (language === "ru") {
+        return [{
+          source: `runtime/hook_debt#${hook.hookId}`,
+          reason: "Сводка по нарративному долгу с исходным текстом завязки для целевой зацепки из плана.",
+          excerpt: [
+            `${hook.hookId} (${hook.type}, ${role}, открыта ${age} глав)`,
+            `обещание читателю: ${promise}`,
+            `исходная завязка (гл.${hook.startChapter}): ${seedBeat}`,
+            latestBeat ? `последний поворот (гл.${hook.lastAdvancedChapter}): ${latestBeat}` : undefined,
+          ].filter(Boolean).join(" | "),
+        }];
+      }
 
       return [{
         source: `runtime/hook_debt#${hook.hookId}`,

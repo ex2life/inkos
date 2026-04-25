@@ -38,9 +38,12 @@ export class FoundationReviewerAgent extends BaseAgent {
       ? this.originalDimensions(params.language)
       : this.derivativeDimensions(params.language, params.mode);
 
-    const systemPrompt = params.language === "en"
-      ? this.buildEnglishReviewPrompt(dimensions, canonBlock, styleBlock)
-      : this.buildChineseReviewPrompt(dimensions, canonBlock, styleBlock);
+    const systemPrompt =
+      params.language === "en"
+        ? this.buildEnglishReviewPrompt(dimensions, canonBlock, styleBlock)
+        : params.language === "ru"
+        ? this.buildRussianReviewPrompt(dimensions, canonBlock, styleBlock)
+        : this.buildChineseReviewPrompt(dimensions, canonBlock, styleBlock);
 
     const userPrompt = this.buildFoundationExcerpt(params.foundation, params.language);
 
@@ -53,43 +56,72 @@ export class FoundationReviewerAgent extends BaseAgent {
   }
 
   private originalDimensions(language: "zh" | "en" | "ru"): ReadonlyArray<string> {
-    return language === "en"
-      ? [
-          "Core Conflict (Is there a clear, compelling central conflict that can sustain 40 chapters?)",
-          "Opening Momentum (Can the first 5 chapters create a page-turning hook?)",
-          "World Coherence (Is the worldbuilding internally consistent and specific?)",
-          "Character Differentiation (Are the main characters distinct in voice and motivation?)",
-          "Pacing Feasibility (Does the volume outline have enough variety — not the same beat for 10 chapters?)",
-        ]
-      : [
-          "核心冲突（是否有清晰且有足够张力的核心冲突支撑40章？）",
-          "开篇节奏（前5章能否形成翻页驱动力？）",
-          "世界一致性（世界观是否内洽且具体？）",
-          "角色区分度（主要角色的声音和动机是否各不相同？）",
-          "节奏可行性（卷纲是否有足够变化——不会连续10章同一种节拍？）",
-        ];
+    if (language === "en") {
+      return [
+        "Core Conflict (Is there a clear, compelling central conflict that can sustain 40 chapters?)",
+        "Opening Momentum (Can the first 5 chapters create a page-turning hook?)",
+        "World Coherence (Is the worldbuilding internally consistent and specific?)",
+        "Character Differentiation (Are the main characters distinct in voice and motivation?)",
+        "Pacing Feasibility (Does the volume outline have enough variety — not the same beat for 10 chapters?)",
+      ];
+    }
+    if (language === "ru") {
+      return [
+        "Центральный конфликт (есть ли ясный, тяговый центральный конфликт, способный нести 40 глав?)",
+        "Темп открытия (создают ли первые 5 глав крючок, заставляющий листать?)",
+        "Внутренняя связность мира (устроен ли мир внутренне согласованно и конкретно?)",
+        "Различимость персонажей (отличаются ли главные персонажи голосом и мотивацией?)",
+        "Реалистичность темпа (хватает ли в плане тома разнообразия — нет ли 10 глав в одном такте?)",
+      ];
+    }
+    return [
+      "核心冲突（是否有清晰且有足够张力的核心冲突支撑40章？）",
+      "开篇节奏（前5章能否形成翻页驱动力？）",
+      "世界一致性（世界观是否内洽且具体？）",
+      "角色区分度（主要角色的声音和动机是否各不相同？）",
+      "节奏可行性（卷纲是否有足够变化——不会连续10章同一种节拍？）",
+    ];
   }
 
   private derivativeDimensions(language: "zh" | "en" | "ru", mode: "fanfic" | "series"): ReadonlyArray<string> {
-    const modeLabel = mode === "fanfic"
-      ? (language === "en" ? "Fan Fiction" : "同人")
-      : (language === "en" ? "Series" : "系列");
+    const modeLabel =
+      mode === "fanfic"
+        ? language === "en"
+          ? "Fan Fiction"
+          : language === "ru"
+          ? "Фанфик"
+          : "同人"
+        : language === "en"
+        ? "Series"
+        : language === "ru"
+        ? "Серия"
+        : "系列";
 
-    return language === "en"
-      ? [
-          `Source DNA Preservation (Does the ${modeLabel} respect the original's world rules, character personalities, and established facts?)`,
-          `New Narrative Space (Is there a clear divergence point or new territory that gives the story room to be ORIGINAL, not a retelling?)`,
-          "Core Conflict (Is the new story's central conflict compelling and distinct from the original?)",
-          "Opening Momentum (Can the first 5 chapters create a page-turning hook without requiring 3 chapters of setup?)",
-          `Pacing Feasibility (Does the outline avoid the trap of re-walking the original's plot beats?)`,
-        ]
-      : [
-          `原作DNA保留（${modeLabel}是否尊重原作的世界规则、角色性格、已确立事实？）`,
-          `新叙事空间（是否有明确的分岔点或新领域，让故事有原创空间，而非复述原作？）`,
-          "核心冲突（新故事的核心冲突是否有足够张力且区别于原作？）",
-          "开篇节奏（前5章能否形成翻页驱动力，不需要3章铺垫？）",
-          `节奏可行性（卷纲是否避免了重走原作剧情节拍的陷阱？）`,
-        ];
+    if (language === "en") {
+      return [
+        `Source DNA Preservation (Does the ${modeLabel} respect the original's world rules, character personalities, and established facts?)`,
+        `New Narrative Space (Is there a clear divergence point or new territory that gives the story room to be ORIGINAL, not a retelling?)`,
+        "Core Conflict (Is the new story's central conflict compelling and distinct from the original?)",
+        "Opening Momentum (Can the first 5 chapters create a page-turning hook without requiring 3 chapters of setup?)",
+        `Pacing Feasibility (Does the outline avoid the trap of re-walking the original's plot beats?)`,
+      ];
+    }
+    if (language === "ru") {
+      return [
+        `Сохранение ДНК исходника (уважает ли ${modeLabel.toLowerCase()} правила мира, характеры и установленные факты оригинала?)`,
+        `Новое нарративное пространство (есть ли явная точка расхождения или новая территория, дающая истории место быть ОРИГИНАЛЬНОЙ, а не пересказом?)`,
+        "Центральный конфликт (тяговит ли центральный конфликт нового сюжета и отличается ли от оригинала?)",
+        "Темп открытия (создают ли первые 5 глав крючок без 3 глав вступления?)",
+        "Реалистичность темпа (избегает ли план повторного прохождения тех же сюжетных тактов оригинала?)",
+      ];
+    }
+    return [
+      `原作DNA保留（${modeLabel}是否尊重原作的世界规则、角色性格、已确立事实？）`,
+      `新叙事空间（是否有明确的分岔点或新领域，让故事有原创空间，而非复述原作？）`,
+      "核心冲突（新故事的核心冲突是否有足够张力且区别于原作？）",
+      "开篇节奏（前5章能否形成翻页驱动力，不需要3章铺垫？）",
+      `节奏可行性（卷纲是否避免了重走原作剧情节拍的陷阱？）`,
+    ];
   }
 
   private buildChineseReviewPrompt(
@@ -126,6 +158,42 @@ ${dimensions.map((dim, i) => `${i + 1}. ${dim}`).join("\n")}
 ${canonBlock}${styleBlock}
 
 审核时要严格。不要因为"还行"就给高分。80分意味着"可以直接开写，不需要改"。`;
+  }
+
+  private buildRussianReviewPrompt(
+    dimensions: ReadonlyArray<string>,
+    canonBlock: string,
+    styleBlock: string,
+  ): string {
+    return `Ты опытный редактор художественной литературы, ревью базы новой книги (мир + план + правила).
+
+Оцени каждое измерение (0–100) с конкретной обратной связью:
+
+${dimensions.map((dim, i) => `${i + 1}. ${dim}`).join("\n")}
+
+## Шкала
+- 80+ — годится, можно начинать писать
+- 60–79 — нужна доработка
+- <60 — фундаментальная проблема направления
+
+## Формат вывода (строго)
+=== DIMENSION: 1 ===
+Score: {0-100}
+Feedback: {конкретный комментарий}
+
+=== DIMENSION: 2 ===
+Score: {0-100}
+Feedback: {конкретный комментарий}
+
+...
+
+=== OVERALL ===
+Total: {взвешенное среднее}
+Passed: {да/нет}
+Summary: {1–2 абзаца — главная проблема и главное достоинство}
+${canonBlock}${styleBlock}
+
+Будь строг. 80 означает «можно писать без правок».`;
   }
 
   private buildEnglishReviewPrompt(
@@ -165,9 +233,13 @@ Be strict. 80 means "ready to write without changes."`;
   }
 
   private buildFoundationExcerpt(foundation: ArchitectOutput, language: "zh" | "en" | "ru"): string {
-    return language === "en"
-      ? `## Story Bible\n${foundation.storyBible.slice(0, 3000)}\n\n## Volume Outline\n${foundation.volumeOutline.slice(0, 3000)}\n\n## Book Rules\n${foundation.bookRules.slice(0, 1500)}\n\n## Initial State\n${foundation.currentState.slice(0, 1000)}\n\n## Initial Hooks\n${foundation.pendingHooks.slice(0, 1000)}`
-      : `## 世界设定\n${foundation.storyBible.slice(0, 3000)}\n\n## 卷纲\n${foundation.volumeOutline.slice(0, 3000)}\n\n## 规则\n${foundation.bookRules.slice(0, 1500)}\n\n## 初始状态\n${foundation.currentState.slice(0, 1000)}\n\n## 初始伏笔\n${foundation.pendingHooks.slice(0, 1000)}`;
+    if (language === "en") {
+      return `## Story Bible\n${foundation.storyBible.slice(0, 3000)}\n\n## Volume Outline\n${foundation.volumeOutline.slice(0, 3000)}\n\n## Book Rules\n${foundation.bookRules.slice(0, 1500)}\n\n## Initial State\n${foundation.currentState.slice(0, 1000)}\n\n## Initial Hooks\n${foundation.pendingHooks.slice(0, 1000)}`;
+    }
+    if (language === "ru") {
+      return `## Story Bible\n${foundation.storyBible.slice(0, 3000)}\n\n## План тома\n${foundation.volumeOutline.slice(0, 3000)}\n\n## Правила книги\n${foundation.bookRules.slice(0, 1500)}\n\n## Начальное состояние\n${foundation.currentState.slice(0, 1000)}\n\n## Начальные крючки\n${foundation.pendingHooks.slice(0, 1000)}`;
+    }
+    return `## 世界设定\n${foundation.storyBible.slice(0, 3000)}\n\n## 卷纲\n${foundation.volumeOutline.slice(0, 3000)}\n\n## 规则\n${foundation.bookRules.slice(0, 1500)}\n\n## 初始状态\n${foundation.currentState.slice(0, 1000)}\n\n## 初始伏笔\n${foundation.pendingHooks.slice(0, 1000)}`;
   }
 
   private parseReviewResult(
@@ -178,7 +250,7 @@ Be strict. 80 means "ready to write without changes."`;
 
     for (let i = 0; i < dimensions.length; i++) {
       const regex = new RegExp(
-        `=== DIMENSION: ${i + 1} ===\\s*[\\s\\S]*?(?:分数|Score)[：:]\\s*(\\d+)[\\s\\S]*?(?:意见|Feedback)[：:]\\s*([\\s\\S]*?)(?==== |$)`,
+        `=== DIMENSION: ${i + 1} ===\\s*[\\s\\S]*?(?:分数|Score|Score)[：:]\\s*(\\d+)[\\s\\S]*?(?:意见|Feedback|Feedback)[：:]\\s*([\\s\\S]*?)(?==== |$)`,
       );
       const match = content.match(regex);
       parsedDimensions.push({

@@ -54,13 +54,50 @@ interface WordListEntry {
   readonly severity: "block" | "warn";
   readonly label: string;
   readonly englishLabel: string;
+  readonly russianLabel: string;
 }
 
 const WORD_LISTS: ReadonlyArray<WordListEntry> = [
-  { words: POLITICAL_WORDS, severity: "block", label: "政治敏感词", englishLabel: "political sensitive terms" },
-  { words: SEXUAL_WORDS, severity: "warn", label: "色情敏感词", englishLabel: "sexual sensitive terms" },
-  { words: VIOLENCE_EXTREME, severity: "warn", label: "极端暴力词", englishLabel: "extreme violence terms" },
+  { words: POLITICAL_WORDS, severity: "block", label: "政治敏感词", englishLabel: "political sensitive terms", russianLabel: "политически чувствительные термины" },
+  { words: SEXUAL_WORDS, severity: "warn", label: "色情敏感词", englishLabel: "sexual sensitive terms", russianLabel: "эротически чувствительные термины" },
+  { words: VIOLENCE_EXTREME, severity: "warn", label: "极端暴力词", englishLabel: "extreme violence terms", russianLabel: "термины крайнего насилия" },
 ];
+
+const CATEGORY_LABEL: Record<SensitiveWordLanguage, string> = {
+  zh: "敏感词",
+  en: "Sensitive terms",
+  ru: "Чувствительные термины",
+};
+
+const CUSTOM_DETECTED: Record<SensitiveWordLanguage, (summary: string) => string> = {
+  zh: (s) => `检测到自定义敏感词：${s}`,
+  en: (s) => `Detected custom sensitive term(s): ${s}`,
+  ru: (s) => `Найдены пользовательские чувствительные термины: ${s}`,
+};
+
+const CUSTOM_SUGGESTION: Record<SensitiveWordLanguage, string> = {
+  zh: "根据项目规则替换或删除这些词语",
+  en: "Replace or remove these terms according to project rules",
+  ru: "Замени или удали эти слова согласно правилам проекта",
+};
+
+const BLOCK_SUGGESTION: Record<SensitiveWordLanguage, string> = {
+  zh: "必须删除或替换政治敏感词，否则无法发布",
+  en: "You must remove or replace these blocked terms before publication",
+  ru: "Эти заблокированные термины придётся убрать или заменить — иначе книга не пройдёт публикацию",
+};
+
+const WARN_SUGGESTION: Record<SensitiveWordLanguage, (label: string) => string> = {
+  zh: (label) => `建议替换或弱化${label}，避免平台审核问题`,
+  en: (label) => `Replace or soften these ${label} to reduce moderation risk`,
+  ru: (label) => `Замени или ослабь ${label}, чтобы снизить риск модерации`,
+};
+
+const DETECTED_BUILTIN: Record<SensitiveWordLanguage, (label: string, summary: string) => string> = {
+  zh: (label, summary) => `检测到${label}：${summary}`,
+  en: (label, summary) => `Detected ${label}: ${summary}`,
+  ru: (label, summary) => `Найдены ${label}: ${summary}`,
+};
 
 /**
  * Analyze text content for sensitive words.
@@ -73,8 +110,11 @@ export function analyzeSensitiveWords(
 ): SensitiveWordResult {
   const found: SensitiveWordMatch[] = [];
   const issues: AuditIssue[] = [];
-  const isEnglish = language === "en";
-  const joiner = isEnglish ? ", " : "、";
+  const joiner = language === "zh" ? "、" : ", ";
+  const categoryLabel = CATEGORY_LABEL[language];
+  const builtinDetected = DETECTED_BUILTIN[language];
+  const blockSuggestion = BLOCK_SUGGESTION[language];
+  const warnSuggestion = WARN_SUGGESTION[language];
 
   // Check built-in word lists
   for (const list of WORD_LISTS) {
@@ -82,19 +122,13 @@ export function analyzeSensitiveWords(
     if (matches.length > 0) {
       found.push(...matches);
       const wordSummary = matches.map((m) => `"${m.word}"×${m.count}`).join(joiner);
+      const localizedListLabel =
+        language === "en" ? list.englishLabel : language === "ru" ? list.russianLabel : list.label;
       issues.push({
         severity: list.severity === "block" ? "critical" : "warning",
-        category: isEnglish ? "Sensitive terms" : "敏感词",
-        description: isEnglish
-          ? `Detected ${list.englishLabel}: ${wordSummary}`
-          : `检测到${list.label}：${wordSummary}`,
-        suggestion: isEnglish
-          ? (list.severity === "block"
-              ? "You must remove or replace these blocked terms before publication"
-              : `Replace or soften these ${list.englishLabel} to reduce moderation risk`)
-          : (list.severity === "block"
-              ? "必须删除或替换政治敏感词，否则无法发布"
-              : `建议替换或弱化${list.label}，避免平台审核问题`),
+        category: categoryLabel,
+        description: builtinDetected(localizedListLabel, wordSummary),
+        suggestion: list.severity === "block" ? blockSuggestion : warnSuggestion(localizedListLabel),
       });
     }
   }
@@ -107,13 +141,9 @@ export function analyzeSensitiveWords(
       const wordSummary = customMatches.map((m) => `"${m.word}"×${m.count}`).join(joiner);
       issues.push({
         severity: "warning",
-        category: isEnglish ? "Sensitive terms" : "敏感词",
-        description: isEnglish
-          ? `Detected custom sensitive term(s): ${wordSummary}`
-          : `检测到自定义敏感词：${wordSummary}`,
-        suggestion: isEnglish
-          ? "Replace or remove these terms according to project rules"
-          : "根据项目规则替换或删除这些词语",
+        category: categoryLabel,
+        description: CUSTOM_DETECTED[language](wordSummary),
+        suggestion: CUSTOM_SUGGESTION[language],
       });
     }
   }

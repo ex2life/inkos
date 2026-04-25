@@ -98,7 +98,8 @@ function dimensionName(id: number, language: PromptLanguage): string | undefined
 }
 
 function joinLocalized(items: ReadonlyArray<string>, language: PromptLanguage): string {
-  return items.join(language === "en" ? ", " : "、");
+  if (language === "zh") return items.join("、");
+  return items.join(", ");
 }
 
 function formatFanficSeverityNote(
@@ -111,6 +112,14 @@ function formatFanficSeverityNote(
       : severity === "info"
         ? "Log only; do not fail the chapter."
         : "Warning level.";
+  }
+
+  if (language === "ru") {
+    return severity === "critical"
+      ? "(строгая проверка)"
+      : severity === "info"
+        ? "(только запись в лог, главу не валим)"
+        : "(уровень предупреждения)";
   }
 
   return severity === "critical"

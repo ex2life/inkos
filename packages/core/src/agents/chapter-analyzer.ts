@@ -131,13 +131,17 @@ export class ChapterAnalyzerAgent extends BaseAgent {
       bibleBlock: !governedMode && storyBible !== this.missingFilePlaceholder(resolvedLanguage)
         ? resolvedLanguage === "en"
           ? `\n## Story Bible\n${storyBible}\n`
-          : `\n## 世界观设定\n${storyBible}\n`
+          : resolvedLanguage === "ru"
+            ? `\n## Канон мира\n${storyBible}\n`
+            : `\n## 世界观设定\n${storyBible}\n`
         : "",
       outlineOrControlBlock: reducedControlBlock || (
         volumeOutline !== this.missingFilePlaceholder(resolvedLanguage)
           ? resolvedLanguage === "en"
             ? `\n## Volume Outline\n${volumeOutline}\n`
-            : `\n## 卷纲\n${volumeOutline}\n`
+            : resolvedLanguage === "ru"
+              ? `\n## План тома\n${volumeOutline}\n`
+              : `\n## 卷纲\n${volumeOutline}\n`
           : ""
       ),
       hooksBlock: governedMemoryBlocks?.hooksBlock
@@ -145,7 +149,9 @@ export class ChapterAnalyzerAgent extends BaseAgent {
           hooksWorkingSet !== this.missingFilePlaceholder(resolvedLanguage)
             ? resolvedLanguage === "en"
               ? `\n## Current Hooks\n${hooksWorkingSet}\n`
-              : `\n## 当前伏笔池\n${hooksWorkingSet}\n`
+              : resolvedLanguage === "ru"
+                ? `\n## Текущий пул зацепок\n${hooksWorkingSet}\n`
+                : `\n## 当前伏笔池\n${hooksWorkingSet}\n`
             : ""
         ),
       summariesBlock: governedMemoryBlocks?.summariesBlock
@@ -153,24 +159,32 @@ export class ChapterAnalyzerAgent extends BaseAgent {
           chapterSummaries !== this.missingFilePlaceholder(resolvedLanguage)
             ? resolvedLanguage === "en"
               ? `\n## Existing Chapter Summaries\n${chapterSummaries}\n`
-              : `\n## 已有章节摘要\n${chapterSummaries}\n`
+              : resolvedLanguage === "ru"
+                ? `\n## Существующие сводки глав\n${chapterSummaries}\n`
+                : `\n## 已有章节摘要\n${chapterSummaries}\n`
             : ""
         ),
       volumeSummariesBlock: governedMemoryBlocks?.volumeSummariesBlock ?? "",
       subplotBlock: subplotWorkingSet !== this.missingFilePlaceholder(resolvedLanguage)
         ? resolvedLanguage === "en"
           ? `\n## Current Subplot Board\n${subplotWorkingSet}\n`
-          : `\n## 当前支线进度板\n${subplotWorkingSet}\n`
+          : resolvedLanguage === "ru"
+            ? `\n## Текущая доска побочных линий\n${subplotWorkingSet}\n`
+            : `\n## 当前支线进度板\n${subplotWorkingSet}\n`
         : "",
       emotionalBlock: emotionalWorkingSet !== this.missingFilePlaceholder(resolvedLanguage)
         ? resolvedLanguage === "en"
           ? `\n## Current Emotional Arcs\n${emotionalWorkingSet}\n`
-          : `\n## 当前情感弧线\n${emotionalWorkingSet}\n`
+          : resolvedLanguage === "ru"
+            ? `\n## Текущие эмоциональные дуги\n${emotionalWorkingSet}\n`
+            : `\n## 当前情感弧线\n${emotionalWorkingSet}\n`
         : "",
       matrixBlock: matrixWorkingSet !== this.missingFilePlaceholder(resolvedLanguage)
         ? resolvedLanguage === "en"
           ? `\n## Current Character Matrix\n${matrixWorkingSet}\n`
-          : `\n## 当前角色交互矩阵\n${matrixWorkingSet}\n`
+          : resolvedLanguage === "ru"
+            ? `\n## Текущая матрица персонажей\n${matrixWorkingSet}\n`
+            : `\n## 当前角色交互矩阵\n${matrixWorkingSet}\n`
         : "",
     });
 
@@ -217,6 +231,115 @@ export class ChapterAnalyzerAgent extends BaseAgent {
     bookRulesBody: string,
     language: "zh" | "en" | "ru",
   ): string {
+    if (language === "ru") {
+      const numericalBlock = genreProfile.numericalSystem
+        ? "\n- В этом жанре отслеживается числовая система ресурсов; UPDATED_LEDGER обязан фиксировать каждое изменение ресурсов в главе."
+        : "\n- В этом жанре нет числовой системы; UPDATED_LEDGER оставь пустым.";
+
+      return `【LANGUAGE OVERRIDE】Весь вывод ДОЛЖЕН быть на русском языке. Маркеры === TAG === не переводить.
+
+Ты аналитик нарративной непрерывности. Прочитай готовую главу, извлеки все изменения состояния и обнови файлы отслеживания.
+
+## Режим работы
+
+Ты не пишешь новый текст. Ты читаешь готовый текст главы и обновляешь truth-файлы книги.
+1. Внимательно читай главу и фиксируй все важные факты.
+2. Обновляй существующие файлы отслеживания инкрементно, а не переписывай их с нуля.
+3. Контракт вывода идентичен пайплайну писателя.
+
+## Что извлекать
+
+- Появления, уходы, ранения, прорывы, смерти и другие изменения статуса персонажей
+- Перемещения и смены сцен
+- Получение и потеря предметов или ресурсов
+- Завязка, развитие и закрытие зацепок
+- Сдвиги эмоциональных дуг
+- Прогресс побочных линий
+- Изменения отношений и границ информации
+
+## Сведения о книге
+
+- Название: ${book.title}
+- Жанр: ${genreProfile.name} (${book.genre})
+- Платформа: ${book.platform}
+${numericalBlock}
+
+## Жанровые ориентиры
+
+${genreBody}
+
+${bookRulesBody ? `## Правила книги\n\n${bookRulesBody}` : ""}
+
+## Формат вывода
+
+Используй разделители === TAG === ровно как показано:
+
+=== CHAPTER_TITLE ===
+(Извлеки или выведи название главы. Только текст названия.)
+
+=== CHAPTER_CONTENT ===
+(Повтори исходный текст главы дословно. Не переписывай.)
+
+=== PRE_WRITE_CHECK ===
+(Оставь пустым в режиме анализа.)
+
+=== POST_SETTLEMENT ===
+(Оставь пустым в режиме анализа.)
+
+=== UPDATED_STATE ===
+Обновлённая карточка состояния в виде Markdown-таблицы, отражающая состояние на конец главы:
+| Поле | Значение |
+| --- | --- |
+| Текущая глава | {номер_главы} |
+| Текущее место | ... |
+| Состояние протагониста | ... |
+| Текущая цель | ... |
+| Текущее ограничение | ... |
+| Текущие союзы | ... |
+| Текущий конфликт | ... |
+
+=== UPDATED_LEDGER ===
+(Если в жанре есть числовая система: выведи полностью обновлённую таблицу ресурсов. Иначе оставь пустым.)
+
+=== UPDATED_HOOKS ===
+Обновлённый пул зацепок в виде Markdown-таблицы с актуальным статусом каждой известной зацепки:
+| hook_id | start_chapter | type | status | last_advanced_chapter | expected_payoff | payoff_timing | notes |
+
+=== CHAPTER_SUMMARY ===
+Одна строка Markdown-таблицы:
+| Глава | Название | Персонажи | Ключевые события | Изменения состояния | Динамика зацепок | Настроение | Тип главы |
+
+=== UPDATED_SUBPLOTS ===
+Обновлённая доска побочных линий (Markdown-таблица)
+
+=== UPDATED_EMOTIONAL_ARCS ===
+Обновлённые эмоциональные дуги (Markdown-таблица)
+
+=== UPDATED_CHARACTER_MATRIX ===
+Обновлённая матрица персонажей (по одному ## разделу на персонажа, поля списком):
+
+## Имя персонажа
+- **Роль**: протагонист / антагонист / союзник / второстепенный / упомянут
+- **Теги**: основные ярлыки идентичности
+- **Контраст**: характерные детали, ломающие шаблон
+- **Речь**: краткое описание манеры речи
+- **Характер**: основные черты личности
+- **Мотивация**: глубинная движущая сила
+- **Текущее**: непосредственная цель в этой главе
+- **Связи**: ДругойПерсонаж(тип/Гл#) | ...
+- **Знает**: что персонаж знает (только то, что видел или ему сказали)
+- **Не знает**: чего персонаж не знает
+
+(Повтори для каждого персонажа. Добавляй новых; существующих обновляй.)
+
+## Правила
+
+1. UPDATED_STATE и UPDATED_HOOKS — инкрементные обновления на базе текущих файлов отслеживания.
+2. Каждое фактическое изменение в главе должно появиться в соответствующем файле.
+3. Не упускай изменения ресурсов, перемещения, изменения отношений и потоков информации.
+4. Границы информации в матрице персонажей соблюдай строго: персонаж знает только то, что лично видел или о чём ему сообщили.`;
+    }
+
     if (language === "en") {
       const numericalBlock = genreProfile.numericalSystem
         ? "\n- This genre tracks numerical/resources systems; UPDATED_LEDGER must capture every resource change shown in the chapter."
@@ -454,6 +577,29 @@ ${bookRulesBody ? `## 本书规则\n\n${bookRulesBody}` : ""}
     readonly bibleBlock: string;
     readonly outlineOrControlBlock: string;
   }): string {
+    if (params.language === "ru") {
+      const titleLine = params.chapterTitle
+        ? `Название главы: ${params.chapterTitle}\n`
+        : "";
+
+      const ledgerBlock = params.ledger
+        ? `\n## Текущий учёт ресурсов\n${params.ledger}\n`
+        : "";
+
+      return `Проанализируй главу ${params.chapterNumber} и обнови все файлы отслеживания.
+${titleLine}
+## Текст главы
+
+${params.chapterContent}
+
+## Текущее состояние
+${params.currentState}
+${ledgerBlock}
+${params.hooksBlock}${params.volumeSummariesBlock}${params.subplotBlock}${params.emotionalBlock}${params.matrixBlock}${params.summariesBlock}${params.outlineOrControlBlock}${params.bibleBlock}
+
+Верни результат строго в формате === TAG ===.`;
+    }
+
     if (params.language === "en") {
       const titleLine = params.chapterTitle
         ? `Chapter Title: ${params.chapterTitle}\n`
@@ -514,6 +660,22 @@ ${params.hooksBlock}${params.volumeSummariesBlock}${params.subplotBlock}${params
         .join("\n")
       : "- none";
 
+    if (language === "ru") {
+      return `\n## Управляющий ввод главы (собран Planner/Composer)
+${chapterIntent}
+
+### Выбранный контекст
+${selectedContext || "- нет"}
+
+### Стек правил
+- Жёсткие ограничители: ${ruleStack.sections.hard.join(", ") || "(нет)"}
+- Мягкие ограничения: ${ruleStack.sections.soft.join(", ") || "(нет)"}
+- Диагностические правила: ${ruleStack.sections.diagnostic.join(", ") || "(нет)"}
+
+### Активные переопределения
+${overrides}\n`;
+    }
+
     return language === "en"
       ? `\n## Chapter Control Inputs (compiled by Planner/Composer)
 ${chapterIntent}
@@ -550,7 +712,12 @@ ${overrides}\n`;
   }
 
   private findOutlineNode(volumeOutline: string, chapterNumber: number): string | undefined {
-    if (!volumeOutline || volumeOutline === this.missingFilePlaceholder("zh") || volumeOutline === this.missingFilePlaceholder("en")) {
+    if (
+      !volumeOutline
+      || volumeOutline === this.missingFilePlaceholder("zh")
+      || volumeOutline === this.missingFilePlaceholder("en")
+      || volumeOutline === this.missingFilePlaceholder("ru")
+    ) {
       return undefined;
     }
 
@@ -558,6 +725,7 @@ ${overrides}\n`;
     const chapterPatterns = [
       new RegExp(`^#+\\s*Chapter\\s*${chapterNumber}\\b`, "i"),
       new RegExp(`^#+\\s*第\\s*${chapterNumber}\\s*章`),
+      new RegExp(`^#+\\s*Глава\\s*${chapterNumber}\\b`, "i"),
     ];
 
     const heading = lines.find((line) => chapterPatterns.some((pattern) => pattern.test(line)));
@@ -588,6 +756,11 @@ ${overrides}\n`;
     const header = language === "en"
       ? [
           "| Chapter | Title | Characters | Key Events | State Changes | Hook Activity | Mood | Chapter Type |",
+          "| --- | --- | --- | --- | --- | --- | --- | --- |",
+        ]
+      : language === "ru"
+      ? [
+          "| Глава | Название | Персонажи | Ключевые события | Изменения состояния | Динамика зацепок | Настроение | Тип главы |",
           "| --- | --- | --- | --- | --- | --- | --- | --- |",
         ]
       : [
@@ -625,10 +798,14 @@ ${overrides}\n`;
   }
 
   private missingFilePlaceholder(language: "zh" | "en" | "ru"): string {
-    return language === "en" ? "(file not created yet)" : "(文件尚未创建)";
+    if (language === "en") return "(file not created yet)";
+    if (language === "ru") return "(файл ещё не создан)";
+    return "(文件尚未创建)";
   }
 
   private defaultChapterTitle(chapterNumber: number, language: "zh" | "en" | "ru"): string {
-    return language === "en" ? `Chapter ${chapterNumber}` : `第${chapterNumber}章`;
+    if (language === "en") return `Chapter ${chapterNumber}`;
+    if (language === "ru") return `Глава ${chapterNumber}`;
+    return `第${chapterNumber}章`;
   }
 }

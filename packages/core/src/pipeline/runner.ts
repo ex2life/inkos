@@ -195,8 +195,16 @@ export class PipelineRunner {
     this.state = new StateManager(config.projectRoot);
   }
 
-  private localize(language: LengthLanguage, messages: { zh: string; en: string }): string {
-    return language === "en" ? messages.en : messages.zh;
+  // Logger / pipeline-runner messages allow ru? as optional with English fallback.
+  // Rationale: these are operator-facing log lines, not LLM prompts — every line
+  // here that lacks a Russian translation falls back to English (which Russian
+  // operators read fluently), never to Chinese. Where this localize is used to
+  // build LLM-facing strings (formatReviewResult, buildAuditDriftBlock,
+  // buildImportReplay* seeds), the call sites already pass an explicit ru.
+  private localize(language: LengthLanguage, messages: { zh: string; en: string; ru?: string }): string {
+    if (language === "en") return messages.en;
+    if (language === "ru") return messages.ru ?? messages.en;
+    return messages.zh;
   }
 
   private async resolveBookLanguage(
@@ -227,17 +235,17 @@ export class PipelineRunner {
     return lengthSpec.countingMode === "en_words" ? "en" : "zh";
   }
 
-  private logStage(language: LengthLanguage, message: { zh: string; en: string }): void {
+  private logStage(language: LengthLanguage, message: { zh: string; en: string; ru?: string }): void {
     this.config.logger?.info(
-      `${this.localize(language, { zh: "阶段：", en: "Stage: " })}${this.localize(language, message)}`,
+      `${this.localize(language, { zh: "阶段：", en: "Stage: ", ru: "Этап: " })}${this.localize(language, message)}`,
     );
   }
 
-  private logInfo(language: LengthLanguage, message: { zh: string; en: string }): void {
+  private logInfo(language: LengthLanguage, message: { zh: string; en: string; ru?: string }): void {
     this.config.logger?.info(this.localize(language, message));
   }
 
-  private logWarn(language: LengthLanguage, message: { zh: string; en: string }): void {
+  private logWarn(language: LengthLanguage, message: { zh: string; en: string; ru?: string }): void {
     this.config.logger?.warn(this.localize(language, message));
   }
 
@@ -332,28 +340,42 @@ export class PipelineRunner {
     language: "zh" | "en" | "ru",
   ): string {
     const dimensionLines = review.dimensions
-      .map((dimension) => (
-        language === "en"
-          ? `- ${dimension.name} [${dimension.score}]: ${dimension.feedback}`
-          : `- ${dimension.name}（${dimension.score}分）：${dimension.feedback}`
-      ))
+      .map((dimension) => {
+        if (language === "en") {
+          return `- ${dimension.name} [${dimension.score}]: ${dimension.feedback}`;
+        }
+        if (language === "ru") {
+          return `- ${dimension.name} (${dimension.score}/10): ${dimension.feedback}`;
+        }
+        return `- ${dimension.name}（${dimension.score}分）：${dimension.feedback}`;
+      })
       .join("\n");
 
-    return language === "en"
-      ? [
-          "## Overall Feedback",
-          review.overallFeedback,
-          "",
-          "## Dimension Notes",
-          dimensionLines || "- none",
-        ].join("\n")
-      : [
-          "## 总评",
-          review.overallFeedback,
-          "",
-          "## 分项问题",
-          dimensionLines || "- 无",
-        ].join("\n");
+    if (language === "en") {
+      return [
+        "## Overall Feedback",
+        review.overallFeedback,
+        "",
+        "## Dimension Notes",
+        dimensionLines || "- none",
+      ].join("\n");
+    }
+    if (language === "ru") {
+      return [
+        "## Общий отзыв",
+        review.overallFeedback,
+        "",
+        "## Замечания по измерениям",
+        dimensionLines || "- нет",
+      ].join("\n");
+    }
+    return [
+      "## 总评",
+      review.overallFeedback,
+      "",
+      "## 分项问题",
+      dimensionLines || "- 无",
+    ].join("\n");
   }
 
   private agentCtx(bookId?: string): AgentContext {
@@ -2259,6 +2281,7 @@ ${matrix}`,
         log?.info(this.localize(resolvedLanguage, {
           zh: `步骤 1：从 ${input.chapters.length} 章生成基础设定...`,
           en: `Step 1: Generating foundation from ${input.chapters.length} chapters...`,
+          ru: `Шаг 1: генерирую базовый сеттинг из ${input.chapters.length} глав...`,
         }));
         const allText = input.chapters.map((c, i) =>
           resolvedLanguage === "en"
@@ -2292,6 +2315,7 @@ ${matrix}`,
           log?.info(this.localize(resolvedLanguage, {
             zh: "提取原文风格指纹...",
             en: "Extracting source style fingerprint...",
+            ru: "Извлекаю стилевой отпечаток исходного текста...",
           }));
           await this.tryGenerateStyleGuide(input.bookId, allText, book.title, resolvedLanguage);
         }
@@ -2299,6 +2323,7 @@ ${matrix}`,
         log?.info(this.localize(resolvedLanguage, {
           zh: "基础设定已生成。",
           en: "Foundation generated.",
+          ru: "Базовый сеттинг сгенерирован.",
         }));
       }
 
@@ -2306,6 +2331,7 @@ ${matrix}`,
       log?.info(this.localize(resolvedLanguage, {
         zh: `步骤 2：从第 ${startFrom} 章开始顺序回放...`,
         en: `Step 2: Sequential replay from chapter ${startFrom}...`,
+        ru: `Шаг 2: последовательное воспроизведение начиная с главы ${startFrom}...`,
       }));
       const analyzer = new ChapterAnalyzerAgent(this.agentCtxFor("chapter-analyzer", input.bookId));
       const writer = new WriterAgent(this.agentCtxFor("writer", input.bookId));
@@ -2321,6 +2347,7 @@ ${matrix}`,
         log?.info(this.localize(resolvedLanguage, {
           zh: `分析章节 ${chapterNumber}/${input.chapters.length}：${ch.title}...`,
           en: `Analyzing chapter ${chapterNumber}/${input.chapters.length}: ${ch.title}...`,
+          ru: `Анализирую главу ${chapterNumber}/${input.chapters.length}: ${ch.title}...`,
         }));
 
         // Analyze chapter to get truth file updates
@@ -2388,6 +2415,7 @@ ${matrix}`,
       log?.info(this.localize(resolvedLanguage, {
         zh: `完成。已导入 ${importedCount} 章，共 ${formatLengthCount(totalWords, countingMode)}。下一章：${nextChapter}`,
         en: `Done. ${importedCount} chapters imported, ${formatLengthCount(totalWords, countingMode)}. Next chapter: ${nextChapter}`,
+        ru: `Готово. Импортировано ${importedCount} глав, общий объём ${formatLengthCount(totalWords, countingMode)}. Следующая глава: ${nextChapter}`,
       }));
 
       return {
@@ -2546,6 +2574,23 @@ ${matrix}`,
       ].join("\n");
     }
 
+    if (language === "ru") {
+      return [
+        "# Текущее состояние",
+        "",
+        "| Поле | Значение |",
+        "| --- | --- |",
+        "| Текущая глава | 0 |",
+        "| Текущая локация | (не задана) |",
+        "| Состояние протагониста | (не задано) |",
+        "| Текущая цель | (не задана) |",
+        "| Текущие ограничения | (не заданы) |",
+        "| Текущие союзы | (не заданы) |",
+        "| Текущий конфликт | (не задан) |",
+        "",
+      ].join("\n");
+    }
+
     return [
       "# 当前状态",
       "",
@@ -2568,6 +2613,16 @@ ${matrix}`,
         "# Pending Hooks",
         "",
         "| hook_id | start_chapter | type | status | last_advanced_chapter | expected_payoff | notes |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+        "",
+      ].join("\n");
+    }
+
+    if (language === "ru") {
+      return [
+        "# Активные крючки",
+        "",
+        "| hook_id | глава начала | тип | статус | последнее продвижение | ожидаемая выплата | заметки |",
         "| --- | --- | --- | --- | --- | --- | --- |",
         "",
       ].join("\n");
@@ -2725,6 +2780,7 @@ ${matrix}`,
       this.logWarn(await this.resolveBookLanguageById(bookId), {
         zh: `叙事记忆同步已跳过：${String(error)}`,
         en: `Narrative memory sync skipped: ${String(error)}`,
+        ru: `Синхронизация нарративной памяти пропущена: ${String(error)}`,
       });
     }
   }
@@ -2831,6 +2887,7 @@ ${matrix}`,
     this.logWarn(await this.resolveBookLanguageById(bookId), {
       zh: `SQLite 记忆索引调试：node=${process.version}; execArgv=${JSON.stringify(process.execArgv)}; code=${code || "(none)"}; message=${message}`,
       en: `SQLite memory debug: node=${process.version}; execArgv=${JSON.stringify(process.execArgv)}; code=${code || "(none)"}; message=${message}`,
+      ru: `Диагностика SQLite-памяти: node=${process.version}; execArgv=${JSON.stringify(process.execArgv)}; code=${code || "(нет)"}; message=${message}`,
     });
   }
 
@@ -2903,6 +2960,7 @@ ${matrix}`,
       this.localize(this.languageFromLengthSpec(lengthSpec), {
         zh: `第${chapterNumber}章经过一次字数归一化后仍超出硬区间（${lengthSpec.hardMin}-${lengthSpec.hardMax}，实际 ${finalCount}）。`,
         en: `Chapter ${chapterNumber} remains outside hard range (${lengthSpec.hardMin}-${lengthSpec.hardMax}, actual ${finalCount}) after a single normalization pass.`,
+        ru: `Глава ${chapterNumber} после однократной нормализации длины всё ещё вне жёсткого диапазона (${lengthSpec.hardMin}–${lengthSpec.hardMax}, фактически ${finalCount}).`,
       }),
     ];
   }
@@ -2957,16 +3015,19 @@ ${matrix}`,
       this.localize(params.language, {
         zh: "# 审计纠偏",
         en: "# Audit Drift",
+        ru: "# Корректировка после аудита",
       }),
       "",
       this.localize(params.language, {
         zh: "## 审计纠偏（自动生成，下一章写作前参照）",
         en: "## Audit Drift Correction",
+        ru: "## Корректировка после аудита (автогенерация — учитывать перед следующей главой)",
       }),
       "",
       this.localize(params.language, {
         zh: `> 第${params.chapterNumber}章审计发现以下问题，下一章写作时必须避免：`,
         en: `> Chapter ${params.chapterNumber} audit found the following issues to avoid in the next chapter:`,
+        ru: `> Аудит главы ${params.chapterNumber} нашёл следующие проблемы — в следующей главе их нужно избегать:`,
       }),
       ...params.issues.map((issue) => `> - [${issue.severity}] ${issue.category}: ${issue.description}`),
       "",
