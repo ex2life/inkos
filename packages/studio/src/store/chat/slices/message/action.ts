@@ -7,6 +7,7 @@ import type {
   SessionSummary,
 } from "../../types";
 import { fetchJson } from "../../../../hooks/use-api";
+import { resolveStoreLang, storeT } from "./i18n";
 import { attachSessionStreamListeners } from "./stream-events";
 import {
   bookKey,
@@ -287,7 +288,7 @@ export const createMessageSlice: StateCreator<ChatStore, [], [], MessageActions>
 
     if (!get().selectedModel) {
       get().addUserMessage(sessionId, trimmed);
-      get().addErrorMessage(sessionId, "请先选择一个模型");
+      get().addErrorMessage(sessionId, storeT("chat.selectModelFirst", resolveStoreLang()));
       return;
     }
 
@@ -386,7 +387,7 @@ export const createMessageSlice: StateCreator<ChatStore, [], [], MessageActions>
           }));
         }
       } else {
-        const emptyMessage = "模型未返回文本内容。请检查协议类型（chat/responses）、流式开关或上游服务兼容性。";
+        const emptyMessage = storeT("chat.emptyResponse", resolveStoreLang());
         if (hasStream) {
           get().replaceStreamWithError(sessionId, streamTs, emptyMessage);
         } else {

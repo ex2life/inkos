@@ -44,4 +44,20 @@ describe("tui local commands", () => {
     expect(parseDepthCommand("深度 深入")).toBe("deep");
     expect(parseDepthCommand("/depth weird")).toBeUndefined();
   });
+
+  it("recognizes Russian command aliases", () => {
+    expect(classifyLocalTuiCommand("помощь")).toBe("help");
+    expect(classifyLocalTuiCommand("справка")).toBe("help");
+    expect(classifyLocalTuiCommand("статус")).toBe("status");
+    expect(classifyLocalTuiCommand("выход")).toBe("quit");
+    expect(classifyLocalTuiCommand("выйти")).toBe("quit");
+    expect(classifyLocalTuiCommand("настройки")).toBe("config");
+    expect(classifyLocalTuiCommand("очистить")).toBe("clear");
+  });
+
+  it("parses Russian depth commands", () => {
+    expect(parseDepthCommand("глубина лёгкая")).toBe("light");
+    expect(parseDepthCommand("/глубина обычная")).toBe("normal");
+    expect(parseDepthCommand("глубина глубокая")).toBe("deep");
+  });
 });

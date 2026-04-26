@@ -2,17 +2,18 @@ import { useEffect, useState } from "react";
 import { FileText } from "lucide-react";
 import { useChatStore } from "../../store/chat";
 import { fetchJson } from "../../hooks/use-api";
+import type { TFunction, StringKey } from "../../hooks/use-i18n";
 import { SidebarCard } from "./SidebarCard";
 
-const FOUNDATION_FILES: ReadonlyArray<{ file: string; label: string }> = [
-  { file: "story_bible.md", label: "世界观设定" },
-  { file: "volume_outline.md", label: "卷纲规划" },
-  { file: "book_rules.md", label: "叙事规则" },
-  { file: "current_state.md", label: "状态卡" },
-  { file: "pending_hooks.md", label: "伏笔池" },
-  { file: "subplot_board.md", label: "支线进度" },
-  { file: "emotional_arcs.md", label: "感情线" },
-  { file: "character_matrix.md", label: "角色矩阵" },
+const FOUNDATION_FILES: ReadonlyArray<{ file: string; labelKey: StringKey }> = [
+  { file: "story_bible.md", labelKey: "foundation.story_bible" },
+  { file: "volume_outline.md", labelKey: "foundation.volume_outline" },
+  { file: "book_rules.md", labelKey: "foundation.book_rules" },
+  { file: "current_state.md", labelKey: "foundation.current_state" },
+  { file: "pending_hooks.md", labelKey: "foundation.pending_hooks" },
+  { file: "subplot_board.md", labelKey: "foundation.subplot_board" },
+  { file: "emotional_arcs.md", labelKey: "foundation.emotional_arcs" },
+  { file: "character_matrix.md", labelKey: "foundation.character_matrix" },
 ];
 
 interface TruthFileInfo {
@@ -22,9 +23,10 @@ interface TruthFileInfo {
 
 interface FoundationSectionProps {
   readonly bookId: string;
+  readonly t: TFunction;
 }
 
-export function FoundationSection({ bookId }: FoundationSectionProps) {
+export function FoundationSection({ bookId, t }: FoundationSectionProps) {
   const [files, setFiles] = useState<ReadonlyArray<TruthFileInfo>>([]);
   const openArtifact = useChatStore((s) => s.openArtifact);
   const bookDataVersion = useChatStore((s) => s.bookDataVersion);
@@ -42,7 +44,7 @@ export function FoundationSection({ bookId }: FoundationSectionProps) {
   if (available.length === 0) return null;
 
   return (
-    <SidebarCard title="核心文件">
+    <SidebarCard title={t("foundation.title")}>
       <ul className="space-y-1">
         {available.map((item) => (
           <li key={item.file}>
@@ -51,7 +53,7 @@ export function FoundationSection({ bookId }: FoundationSectionProps) {
               className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors font-['SimSun','Songti_SC','STSong',serif]"
             >
               <FileText size={14} className="shrink-0 text-muted-foreground/60" />
-              <span className="truncate">{item.label}</span>
+              <span className="truncate">{t(item.labelKey)}</span>
             </button>
           </li>
         ))}

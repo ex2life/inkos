@@ -1,6 +1,6 @@
 import type { ChatDepth } from "./chat-depth.js";
 
-export type TuiLocale = "zh-CN" | "en";
+export type TuiLocale = "zh-CN" | "en" | "ru-RU";
 
 export interface TuiCopy {
   readonly locale: TuiLocale;
@@ -21,6 +21,7 @@ export interface TuiCopy {
     readonly none: string;
     readonly notConfigured: string;
     readonly unknown: string;
+    readonly chapterShort: (chapterNumber: number) => string;
   };
   readonly modeLabels: Record<string, string>;
   readonly composer: {
@@ -64,6 +65,71 @@ export interface TuiCopy {
     readonly completed: (intent: string) => string;
     readonly intentLabels: Partial<Record<string, string>>;
   };
+  readonly effects: {
+    readonly themeLabels: Record<
+      "thinking" | "writing" | "auditing" | "revising" | "planning" | "composing" | "loading",
+      string
+    >;
+    readonly intentBadges: Record<
+      | "write_next"
+      | "revise_chapter"
+      | "rewrite_chapter"
+      | "update_focus"
+      | "explain_status"
+      | "explain_failure"
+      | "pause_book"
+      | "list_books"
+      | "select_book"
+      | "switch_mode"
+      | "rename_entity"
+      | "patch_chapter_text"
+      | "edit_truth",
+      string
+    >;
+    readonly help: {
+      readonly sections: ReadonlyArray<{
+        readonly title: string;
+        readonly commands: ReadonlyArray<readonly [string, string]>;
+      }>;
+      readonly footerTitle: string;
+      readonly footerExamples: ReadonlyArray<string>;
+    };
+  };
+  readonly setup: {
+    readonly title: string;
+    readonly subtitle: string;
+    readonly steps: {
+      readonly provider: string;
+      readonly baseUrl: string;
+      readonly apiKey: string;
+      readonly model: string;
+      readonly scope: string;
+    };
+    readonly hints: {
+      readonly provider: string;
+      readonly baseUrl: string;
+      readonly model: string;
+      readonly scope: string;
+    };
+    readonly defaults: {
+      readonly provider: string;
+      readonly baseUrl: string;
+      readonly scope: string;
+    };
+    readonly scopeChoices: {
+      readonly global: string;
+      readonly project: string;
+    };
+    readonly savedTo: string;
+    readonly autoInit: {
+      readonly initializing: (projectName: string) => string;
+      readonly initialized: string;
+      readonly envTemplateHeader: string;
+    };
+  };
+  readonly slash: {
+    readonly newCommandHint: string;
+  };
 }
 
 const ZH_CN: TuiCopy = {
@@ -85,6 +151,7 @@ const ZH_CN: TuiCopy = {
     none: "无",
     notConfigured: "未配置",
     unknown: "未知",
+    chapterShort: (chapterNumber) => `第 ${chapterNumber} 章`,
   },
   modeLabels: {
     auto: "自动",
@@ -153,6 +220,103 @@ const ZH_CN: TuiCopy = {
       edit_truth: "已更新真相文件",
     },
   },
+  effects: {
+    themeLabels: {
+      thinking: "思考中",
+      writing: "写作中",
+      auditing: "审计中",
+      revising: "修订中",
+      planning: "规划中",
+      composing: "生成中",
+      loading: "加载中",
+    },
+    intentBadges: {
+      write_next: " 写作 ",
+      revise_chapter: " 修订 ",
+      rewrite_chapter: " 重写 ",
+      update_focus: " 焦点 ",
+      explain_status: " 状态 ",
+      explain_failure: " 调试 ",
+      pause_book: " 暂停 ",
+      list_books: " 作品 ",
+      select_book: " 选择 ",
+      switch_mode: " 模式 ",
+      rename_entity: " 改名 ",
+      patch_chapter_text: " 修补 ",
+      edit_truth: " 真相 ",
+    },
+    help: {
+      sections: [
+        {
+          title: "写作",
+          commands: [
+            ["/write", "完整跑一轮下一章写作"],
+            ["/rewrite <n>", "从头重写第 N 章"],
+          ],
+        },
+        {
+          title: "导航",
+          commands: [
+            ["/books", "列出全部作品"],
+            ["/open <book>", "切换当前作品"],
+            ["/status", "查看当前状态"],
+          ],
+        },
+        {
+          title: "控制",
+          commands: [
+            ["/mode <auto|semi|manual>", "切换自动化模式"],
+            ["/focus <text>", "更新当前焦点"],
+          ],
+        },
+        {
+          title: "会话",
+          commands: [
+            ["/clear", "清空当前屏幕"],
+            ["/help", "显示帮助"],
+            ["/quit", "退出 InkOS TUI"],
+          ],
+        },
+      ],
+      footerTitle: "自然语言同样可用：",
+      footerExamples: ['"继续写" "写下一章" "暂停" "把林烬改成张三"'],
+    },
+  },
+  setup: {
+    title: "模型配置",
+    subtitle: "配置模型服务后即可开始使用。",
+    steps: {
+      provider: "服务提供方",
+      baseUrl: "接口地址",
+      apiKey: "API 密钥",
+      model: "模型",
+      scope: "保存范围",
+    },
+    hints: {
+      provider: "openai / anthropic / custom（兼容 OpenAI 的代理）",
+      baseUrl: "你的 API 入口地址",
+      model: "例如 gpt-5.4、claude-sonnet-4-20250514、deepseek-chat",
+      scope: "global = 所有项目，project = 仅当前目录",
+    },
+    defaults: {
+      provider: "openai",
+      baseUrl: "（默认）",
+      scope: "[global]",
+    },
+    scopeChoices: {
+      global: "所有项目",
+      project: "当前目录",
+    },
+    savedTo: "已保存到",
+    autoInit: {
+      initializing: (projectName) => `正在初始化项目：${projectName}/ ...`,
+      initialized: "项目已初始化",
+      envTemplateHeader: "# LLM 配置 —— 运行 inkos tui 进行交互式配置",
+    },
+  },
+  slash: {
+    newCommandHint: "/new 输入你的想法",
+  },
 };
 
 const EN: TuiCopy = {
@@ -174,6 +338,7 @@ const EN: TuiCopy = {
     none: "none",
     notConfigured: "not configured",
     unknown: "unknown",
+    chapterShort: (chapterNumber) => `ch.${chapterNumber}`,
   },
   modeLabels: {
     auto: "auto",
@@ -242,6 +407,296 @@ const EN: TuiCopy = {
       edit_truth: "Truth file updated",
     },
   },
+  effects: {
+    themeLabels: {
+      thinking: "thinking",
+      writing: "writing",
+      auditing: "auditing",
+      revising: "revising",
+      planning: "planning",
+      composing: "composing",
+      loading: "loading",
+    },
+    intentBadges: {
+      write_next: " WRITE ",
+      revise_chapter: " REVISE ",
+      rewrite_chapter: " REWRITE ",
+      update_focus: " FOCUS ",
+      explain_status: " STATUS ",
+      explain_failure: " DEBUG ",
+      pause_book: " PAUSE ",
+      list_books: " BOOKS ",
+      select_book: " SELECT ",
+      switch_mode: " MODE ",
+      rename_entity: " RENAME ",
+      patch_chapter_text: " PATCH ",
+      edit_truth: " TRUTH ",
+    },
+    help: {
+      sections: [
+        {
+          title: "Writing",
+          commands: [
+            ["/write", "Write the next chapter (full pipeline)"],
+            ["/rewrite <n>", "Rewrite chapter N from scratch"],
+          ],
+        },
+        {
+          title: "Navigation",
+          commands: [
+            ["/books", "List all books"],
+            ["/open <book>", "Select active book"],
+            ["/status", "Show current status"],
+          ],
+        },
+        {
+          title: "Control",
+          commands: [
+            ["/mode <auto|semi|manual>", "Switch automation mode"],
+            ["/focus <text>", "Update current focus"],
+          ],
+        },
+        {
+          title: "Session",
+          commands: [
+            ["/clear", "Clear screen"],
+            ["/help", "Show this help"],
+            ["/quit", "Exit InkOS TUI"],
+          ],
+        },
+      ],
+      footerTitle: "Natural language also works:",
+      footerExamples: ['"continue writing" "write next chapter" "pause" "rename Lin Jin to Zhang San"'],
+    },
+  },
+  setup: {
+    title: "LLM Setup",
+    subtitle: "Configure your model provider to start writing.",
+    steps: {
+      provider: "Provider",
+      baseUrl: "Base URL",
+      apiKey: "API Key",
+      model: "Model",
+      scope: "Save scope",
+    },
+    hints: {
+      provider: "openai / anthropic / custom (OpenAI-compatible proxy)",
+      baseUrl: "Your API endpoint",
+      model: "e.g. gpt-4o, claude-sonnet-4-20250514, deepseek-chat",
+      scope: "global = all projects, project = this directory only",
+    },
+    defaults: {
+      provider: "openai",
+      baseUrl: "(default)",
+      scope: "[global]",
+    },
+    scopeChoices: {
+      global: "all projects",
+      project: "this directory",
+    },
+    savedTo: "Saved to",
+    autoInit: {
+      initializing: (projectName) => `Initializing project in ${projectName}/ ...`,
+      initialized: "Project initialized",
+      envTemplateHeader: "# LLM Configuration — run inkos tui to configure interactively",
+    },
+  },
+  slash: {
+    newCommandHint: "/new describe your idea",
+  },
+};
+
+const RU_RU: TuiCopy = {
+  locale: "ru-RU",
+  labels: {
+    project: "Проект",
+    book: "Книга",
+    depth: "Глубина",
+    session: "Сессия",
+    messageCount: (count) => `${count} сообщ.`,
+    stage: "Этап",
+    mode: "Режим",
+    model: "Модель",
+    error: "Ошибка",
+    recent: "Недавнее",
+    pending: "Ожидает",
+    draft: "Черновик",
+    ready: "Готово",
+    none: "нет",
+    notConfigured: "не настроено",
+    unknown: "неизвестно",
+    chapterShort: (chapterNumber) => `гл.${chapterNumber}`,
+  },
+  modeLabels: {
+    auto: "авто",
+    semi: "полуавто",
+    manual: "ручной",
+  },
+  composer: {
+    placeholder: "Скажите InkOS, что написать, исправить или объяснить…",
+    emptyConversation: "Начните с того, что попросите InkOS сделать.",
+    helper: "Enter — отправить • /new опишите идею для новой книги • /draft • /create • /write • /books • /open • /mode • /depth • /help",
+    submitting: "Отправка…",
+    failed: "Последний запрос не удался",
+    ready: "Готово",
+  },
+  notes: {
+    help: "Команды: /new (опишите идею для новой книги), /draft, /create, /discard, /write, /books, /open, /mode, /rewrite, /focus, /truth, /rename, /replace, /export, /status, /clear, /depth, /quit. Естественный язык также работает.",
+    status: (stage, mode) => `Статус: ${stage} (${mode}).`,
+    config: "Интерактивный /config пока недоступен в Ink-дашборде. Используйте inkos config set-global.",
+    depthSet: (depthLabel) => `Глубина мышления переключена на ${depthLabel}.`,
+    newBookGuide: "Начинаем новую книгу. Опишите идею — жанр, мир, главного героя, основной конфликт, что угодно. AI проведёт вас шаг за шагом. /draft — проверить прогресс, /create — финализировать.",
+    noLlmConfig: "Конфигурация LLM не найдена.",
+    setupProvider: "Сначала настроим провайдера API.",
+    toolInitFailed: (message) => `Не удалось инициализировать инструменты TUI: ${message}`,
+    toolInitHint: "Проверьте .env или запустите: inkos config set-global",
+  },
+  roles: {
+    user: "Вы",
+    assistant: "InkOS",
+    system: "Система",
+  },
+  activity: {
+    thinking: "думаю",
+    checking: "проверяю",
+    writing: "пишу",
+    reviewing: "вычитываю",
+    updating: "обновляю",
+  },
+  stageLabels: {
+    completed: "завершено",
+    failed: "ошибка",
+    blocked: "заблокировано",
+    waitingHuman: "жду вашего решения",
+    pausedByUser: "приостановлено пользователем",
+    readyToContinue: "готово к продолжению",
+  },
+  depthLabels: {
+    light: "лёгкая",
+    normal: "обычная",
+    deep: "глубокая",
+  },
+  results: {
+    modeSwitched: (mode) => `Режим переключён на ${mode}.`,
+    booksListed: "Книги перечислены.",
+    activeBook: (bookId) => `Активная книга: ${bookId}`,
+    completed: (intent) => `Выполнено: ${intent}`,
+    intentLabels: {
+      write_next: "Глава написана",
+      revise_chapter: "Глава отредактирована",
+      rewrite_chapter: "Глава переписана",
+      update_focus: "Фокус обновлён",
+      explain_status: "Статус",
+      explain_failure: "Объяснение",
+      pause_book: "Книга приостановлена",
+      rename_entity: "Сущность переименована",
+      patch_chapter_text: "Текст исправлен",
+      edit_truth: "Файл правды обновлён",
+    },
+  },
+  effects: {
+    themeLabels: {
+      thinking: "размышляю",
+      writing: "пишу",
+      auditing: "проверяю",
+      revising: "правлю",
+      planning: "планирую",
+      composing: "составляю",
+      loading: "загружаю",
+    },
+    intentBadges: {
+      write_next: " ПИСАТЬ ",
+      revise_chapter: " ПРАВКА ",
+      rewrite_chapter: " ПЕРЕПИСАТЬ ",
+      update_focus: " ФОКУС ",
+      explain_status: " СТАТУС ",
+      explain_failure: " ОТЛАДКА ",
+      pause_book: " ПАУЗА ",
+      list_books: " КНИГИ ",
+      select_book: " ВЫБОР ",
+      switch_mode: " РЕЖИМ ",
+      rename_entity: " ПЕРЕИМ. ",
+      patch_chapter_text: " ПАТЧ ",
+      edit_truth: " ПРАВДА ",
+    },
+    help: {
+      sections: [
+        {
+          title: "Письмо",
+          commands: [
+            ["/write", "Полный прогон следующей главы"],
+            ["/rewrite <n>", "Переписать главу N с нуля"],
+          ],
+        },
+        {
+          title: "Навигация",
+          commands: [
+            ["/books", "Список всех книг"],
+            ["/open <book>", "Выбрать активную книгу"],
+            ["/status", "Показать текущий статус"],
+          ],
+        },
+        {
+          title: "Управление",
+          commands: [
+            ["/mode <auto|semi|manual>", "Переключить режим автоматизации"],
+            ["/focus <text>", "Обновить текущий фокус"],
+          ],
+        },
+        {
+          title: "Сессия",
+          commands: [
+            ["/clear", "Очистить экран"],
+            ["/help", "Показать эту справку"],
+            ["/quit", "Выйти из InkOS TUI"],
+          ],
+        },
+      ],
+      footerTitle: "Естественный язык тоже работает:",
+      footerExamples: ['"продолжай писать" "следующая глава" "пауза" "переименуй Анну в Елену"'],
+    },
+  },
+  setup: {
+    title: "Настройка LLM",
+    subtitle: "Настройте провайдера модели, чтобы начать писать.",
+    steps: {
+      provider: "Провайдер",
+      baseUrl: "Base URL",
+      apiKey: "API-ключ",
+      model: "Модель",
+      scope: "Область сохранения",
+    },
+    hints: {
+      provider: "openai / anthropic / custom (OpenAI-совместимый прокси)",
+      baseUrl: "Адрес вашего API",
+      model: "напр. gpt-4o, claude-sonnet-4-20250514, deepseek-chat",
+      scope: "global = все проекты, project = только этот каталог",
+    },
+    defaults: {
+      provider: "openai",
+      baseUrl: "(по умолчанию)",
+      scope: "[global]",
+    },
+    scopeChoices: {
+      global: "все проекты",
+      project: "этот каталог",
+    },
+    savedTo: "Сохранено в",
+    autoInit: {
+      initializing: (projectName) => `Инициализация проекта: ${projectName}/ ...`,
+      initialized: "Проект инициализирован",
+      envTemplateHeader: "# Конфигурация LLM — запустите inkos tui для интерактивной настройки",
+    },
+  },
+  slash: {
+    newCommandHint: "/new опишите вашу идею",
+  },
+};
+
+const COPIES: Record<TuiLocale, TuiCopy> = {
+  "zh-CN": ZH_CN,
+  en: EN,
+  "ru-RU": RU_RU,
 };
 
 export function resolveTuiLocale(
@@ -263,7 +718,7 @@ export function resolveTuiLocale(
 }
 
 export function getTuiCopy(locale: TuiLocale): TuiCopy {
-  return locale === "en" ? EN : ZH_CN;
+  return COPIES[locale];
 }
 
 export function normalizeStageLabel(label: string, copy: TuiCopy): string {
@@ -321,6 +776,10 @@ function normalizeLocale(value: string | undefined): TuiLocale | undefined {
 
   if (normalized.startsWith("en")) {
     return "en";
+  }
+
+  if (normalized.startsWith("ru")) {
+    return "ru-RU";
   }
 
   return undefined;

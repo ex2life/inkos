@@ -147,9 +147,7 @@ function roleLabel(role: InteractionMessage["role"], copy: TuiCopy): string {
 function summarizeEvent(event: InteractionEvent, copy: TuiCopy): string {
   const base = compactInline(event.detail?.trim() || event.kind);
   if (event.bookId && event.chapterNumber !== undefined) {
-    const chapterLabel = copy.locale === "zh-CN"
-      ? `第 ${event.chapterNumber} 章`
-      : `ch.${event.chapterNumber}`;
+    const chapterLabel = copy.labels.chapterShort(event.chapterNumber);
     return `${base} (${event.bookId} ${chapterLabel})`;
   }
   if (event.bookId) {

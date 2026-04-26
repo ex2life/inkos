@@ -17,4 +17,10 @@ describe("tui activity state", () => {
     expect(describeActivityState("rewrite_chapter", zhCopy)).toMatchObject({ label: "审阅中", accent: WARM_ACCENT });
     expect(describeActivityState("chat", zhCopy).intervalMs).toBeGreaterThanOrEqual(180);
   });
+
+  it("maps writing and review intents to Russian labels", () => {
+    const ruCopy = getTuiCopy("ru-RU");
+    expect(describeActivityState("write_next", ruCopy)).toMatchObject({ label: "пишу", accent: WARM_ACCENT });
+    expect(describeActivityState("revise_chapter", ruCopy)).toMatchObject({ label: "вычитываю", accent: WARM_ACCENT });
+  });
 });

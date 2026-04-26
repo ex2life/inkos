@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applySlashSuggestion,
+  buildSlashCommands,
   getSlashSuggestions,
   getNextSlashSelection,
   SLASH_COMMANDS,
@@ -32,5 +33,16 @@ describe("tui slash autocomplete", () => {
     expect(applySlashSuggestion("/d", ["/depth <light|normal|deep>"], 0)).toBe("/depth ");
     expect(applySlashSuggestion("/dr", ["/draft"], 0)).toBe("/draft");
     expect(applySlashSuggestion("/cr", ["/create"], 0)).toBe("/create");
+  });
+
+  it("localizes the /new command hint per locale", () => {
+    const ru = buildSlashCommands("ru-RU");
+    expect(ru[0]).toContain("/new");
+    expect(ru[0]).toContain("опишите");
+    const en = buildSlashCommands("en");
+    expect(en[0]).toContain("/new");
+    expect(en[0]).toContain("describe");
+    const zh = buildSlashCommands("zh-CN");
+    expect(zh[0]).toContain("输入");
   });
 });

@@ -135,7 +135,7 @@ export function App() {
                   refetchProject();
                 }}
                 className={`text-xs px-2 py-0.5 rounded ${currentLang === "zh" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-                title="中文"
+                title="中文 / Chinese"
               >
                 中
               </button>

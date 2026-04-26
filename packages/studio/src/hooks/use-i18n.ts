@@ -1,4 +1,5 @@
 import { useApi } from "./use-api";
+import { setStoreLang } from "../store/chat/slices/message/i18n";
 
 export type Lang = "zh" | "en" | "ru";
 
@@ -321,6 +322,233 @@ const strings = {
   "logs.title": { zh: "日志", en: "Logs", ru: "Журналы" },
   "logs.empty": { zh: "暂无日志", en: "No log entries yet", ru: "Записей пока нет" },
   "logs.showingRecent": { zh: "当前展示最近日志记录。", en: "Showing recent log entries.", ru: "Показаны последние записи журнала." },
+
+  // Service Provider List page
+  "service.list.connected": { zh: "已连接", en: "Connected", ru: "Подключено" },
+  "service.list.notConfigured": { zh: "未配置", en: "Not configured", ru: "Не настроено" },
+  "service.list.breadcrumbHome": { zh: "首页", en: "Home", ru: "Главная" },
+  "service.list.title": { zh: "服务商管理", en: "Provider Manager", ru: "Провайдеры моделей" },
+  "service.list.searchPlaceholder": { zh: "搜索服务商", en: "Search providers", ru: "Поиск провайдеров" },
+  "service.list.clearSearch": { zh: "清空搜索", en: "Clear search", ru: "Очистить поиск" },
+  "service.list.all": { zh: "全部", en: "All", ru: "Все" },
+  "service.list.clearFilters": { zh: "清除筛选", en: "Clear filters", ru: "Сбросить фильтры" },
+  "service.list.onlyConnected": { zh: "只看已连接", en: "Show only connected", ru: "Только подключённые" },
+  "service.list.customSection": { zh: "自定义服务", en: "Custom Services", ru: "Свои сервисы" },
+  "service.list.customCard": { zh: "自定义服务", en: "Custom Service", ru: "Свой сервис" },
+  "service.list.empty": { zh: "没有匹配的服务商", en: "No matching providers", ru: "Подходящих провайдеров не найдено" },
+
+  // Service Provider Detail page
+  "service.detail.customLabel": { zh: "自定义服务", en: "Custom Service", ru: "Свой сервис" },
+  "service.detail.errorEnterApiKey": { zh: "请先输入 API Key", en: "Please enter the API Key first", ru: "Сначала введите API Key" },
+  "service.detail.errorEnterBaseUrl": { zh: "请先填写 Base URL", en: "Please enter the Base URL first", ru: "Сначала укажите Base URL" },
+  "service.detail.errorConnectionFailed": { zh: "连接失败", en: "Connection failed", ru: "Соединение не удалось" },
+  "service.detail.errorSaveFailed": { zh: "保存失败", en: "Save failed", ru: "Не удалось сохранить" },
+  "service.detail.back": { zh: "返回服务商管理", en: "Back to Providers", ru: "Назад к провайдерам" },
+  "service.detail.connected": { zh: "已连接", en: "Connected", ru: "Подключено" },
+  "service.detail.serviceName": { zh: "服务名称", en: "Service Name", ru: "Название сервиса" },
+  "service.detail.serviceNamePlaceholder": { zh: "例如：本地 Ollama", en: "e.g. Local Ollama", ru: "например, Local Ollama" },
+  "service.detail.testConnection": { zh: "测试连接", en: "Test Connection", ru: "Проверить соединение" },
+  "service.detail.saveButton": { zh: "保存", en: "Save", ru: "Сохранить" },
+  "service.detail.connectionSuccessPrefix": { zh: "连接成功，", en: "Connection successful, ", ru: "Соединение установлено, " },
+  "service.detail.modelsCountSuffix": { zh: " 个模型", en: " models", ru: " моделей" },
+  "service.detail.autoMatchedPrefix": { zh: "，已自动匹配 ", en: ", auto-matched ", ru: ", автоматически выбран " },
+  "service.detail.streamLabel": { zh: "流式", en: "Stream", ru: "Поток" },
+  "service.detail.nonStreamLabel": { zh: "非流式", en: "Non-stream", ru: "Без потока" },
+  "service.detail.saved": { zh: "已保存", en: "Saved", ru: "Сохранено" },
+  "service.detail.protocolType": { zh: "协议类型", en: "Protocol Type", ru: "Тип протокола" },
+  "service.detail.streamResponse": { zh: "流式响应", en: "Streaming Response", ru: "Потоковый ответ" },
+  "service.detail.streamOn": { zh: "开启", en: "On", ru: "Включено" },
+  "service.detail.streamOff": { zh: "关闭", en: "Off", ru: "Выключено" },
+  "service.detail.availableModels": { zh: "可用模型", en: "Available models", ru: "Доступные модели" },
+  "service.detail.modelsHint": { zh: "点击“测试连接”查看可用模型", en: "Click “Test Connection” to view available models", ru: "Нажмите «Проверить соединение», чтобы увидеть доступные модели" },
+  "service.detail.advancedParams": { zh: "高级参数", en: "Advanced parameters", ru: "Дополнительные параметры" },
+
+  // Chat page
+  "chat.empty.guidance": {
+    zh: "告诉我你想写什么——题材、世界观、主角、核心冲突",
+    en: "Tell me what you want to write — genre, world, protagonist, core conflict",
+    ru: "Расскажите, что хотите написать — жанр, мир, протагонист, ключевой конфликт",
+  },
+  "chat.thinking": { zh: "思考中...", en: "Thinking...", ru: "Думаю..." },
+  "chat.inputPlaceholder": { zh: "输入指令...", en: "Enter command...", ru: "Введите команду..." },
+  "chat.loadingModels": { zh: "加载模型...", en: "Loading models...", ru: "Загрузка моделей..." },
+  "chat.selectModel": { zh: "选择模型", en: "Select model", ru: "Выбрать модель" },
+  "chat.configureModel": { zh: "配置模型 →", en: "Configure model →", ru: "Настроить модель →" },
+  "chat.searchModels": { zh: "搜索模型...", en: "Search models...", ru: "Поиск моделей..." },
+  "chat.noMatchModel": { zh: "无匹配模型", en: "No matching models", ru: "Нет подходящих моделей" },
+  "chat.manageProviders": { zh: "管理服务商", en: "Manage providers", ru: "Управление провайдерами" },
+  "chat.selectModelFirst": { zh: "请先选择一个模型", en: "Please select a model first", ru: "Сначала выберите модель" },
+  "chat.emptyResponse": {
+    zh: "模型未返回文本内容。请检查协议类型（chat/responses）、流式开关或上游服务兼容性。",
+    en: "The model returned no text. Check the protocol type (chat/responses), streaming flag, or upstream service compatibility.",
+    ru: "Модель не вернула текст. Проверьте тип протокола (chat/responses), потоковый режим и совместимость провайдера.",
+  },
+
+  // Quick actions
+  "qa.writeNext": { zh: "写下一章", en: "Write next", ru: "Следующая глава" },
+  "qa.audit": { zh: "审计", en: "Audit", ru: "Аудит" },
+  "qa.export": { zh: "导出", en: "Export", ru: "Экспорт" },
+  "qa.radar": { zh: "市场雷达", en: "Market radar", ru: "Радар рынка" },
+
+  // Tool execution status
+  "tool.status.running": { zh: "执行中", en: "Running", ru: "Выполняется" },
+  "tool.status.processing": { zh: "处理结果", en: "Processing", ru: "Обработка" },
+  "tool.status.completed": { zh: "已完成", en: "Completed", ru: "Готово" },
+  "tool.status.error": { zh: "失败", en: "Failed", ru: "Ошибка" },
+  "tool.status.waitingApproval": { zh: "等待确认", en: "Waiting approval", ru: "Ожидает подтверждения" },
+  "tool.status.responded": { zh: "已响应", en: "Responded", ru: "Обработано" },
+  "tool.status.streaming": { zh: "处理中", en: "Streaming", ru: "Идёт обработка" },
+  "tool.status.denied": { zh: "已拒绝", en: "Denied", ru: "Отклонено" },
+  "tool.status.outputError": { zh: "出错", en: "Error", ru: "Ошибка" },
+  "tool.thinking": { zh: "思考中", en: "thinking", ru: "размышление" },
+  "tool.fileOps": { zh: "{n} 个文件操作", en: "{n} file operations", ru: "Операций с файлами: {n}" },
+
+  // Tool labels (shown in tool-execution rows)
+  "tool.label.read": { zh: "读取文件", en: "Read file", ru: "Чтение файла" },
+  "tool.label.edit": { zh: "编辑文件", en: "Edit file", ru: "Правка файла" },
+  "tool.label.grep": { zh: "搜索", en: "Search", ru: "Поиск" },
+  "tool.label.ls": { zh: "列目录", en: "List directory", ru: "Список каталога" },
+  "tool.agent.architect": { zh: "建书", en: "Build book", ru: "Сборка книги" },
+  "tool.agent.writer": { zh: "写作", en: "Writing", ru: "Письмо" },
+  "tool.agent.auditor": { zh: "审计", en: "Audit", ru: "Аудит" },
+  "tool.agent.reviser": { zh: "修订", en: "Revise", ru: "Правка" },
+  "tool.agent.exporter": { zh: "导出", en: "Export", ru: "Экспорт" },
+
+  // Sidebar (left)
+  "sidebar.rename": { zh: "改名", en: "Rename", ru: "Переименовать" },
+  "sidebar.delete": { zh: "删除", en: "Delete", ru: "Удалить" },
+  "sidebar.newSession": { zh: "新建会话", en: "New session", ru: "Новый чат" },
+  "sidebar.renameTitle": { zh: "重命名会话", en: "Rename session", ru: "Переименовать чат" },
+  "sidebar.renamePlaceholder": { zh: "输入新标题", en: "Enter new title", ru: "Введите новый заголовок" },
+  "sidebar.cancel": { zh: "取消", en: "Cancel", ru: "Отмена" },
+  "sidebar.save": { zh: "保存", en: "Save", ru: "Сохранить" },
+  "sidebar.deleteSessionTitle": { zh: "删除会话", en: "Delete session", ru: "Удалить чат" },
+  "sidebar.deleteSessionMessage": {
+    zh: "确认删除「{title}」吗？该操作只删除这条会话，不影响书籍内容。",
+    en: "Delete \"{title}\"? Only this session is removed; book content stays intact.",
+    ru: "Удалить «{title}»? Это удалит только сам чат — содержимое книги не пострадает.",
+  },
+  "sidebar.newSessionFallback": { zh: "新会话", en: "New session", ru: "Новый чат" },
+  "sidebar.justNow": { zh: "刚刚", en: "just now", ru: "только что" },
+  "sidebar.minutesAgo": { zh: "{n} 分钟", en: "{n} min", ru: "{n} мин" },
+  "sidebar.hoursAgo": { zh: "{n} 小时", en: "{n} h", ru: "{n} ч" },
+  "sidebar.daysAgo": { zh: "{n} 天", en: "{n} d", ru: "{n} дн" },
+  "sidebar.monthsAgo": { zh: "{n} 个月", en: "{n} mo", ru: "{n} мес" },
+
+  // Book sidebar (right)
+  "bookSidebar.bookInfo": { zh: "书籍信息", en: "Book info", ru: "О книге" },
+  "bookSidebar.fileMissing": { zh: "文件不存在", en: "File not found", ru: "Файл не найден" },
+  "bookSidebar.chapterLabel": { zh: "第 {n} 章", en: "Chapter {n}", ru: "Глава {n}" },
+  "bookSidebar.writing": { zh: "正在写作中...", en: "Writing...", ru: "Идёт запись..." },
+  "bookSidebar.auditing": { zh: "正在审计中...", en: "Auditing...", ru: "Идёт проверка..." },
+  "bookSidebar.revising": { zh: "正在修订中...", en: "Revising...", ru: "Идёт правка..." },
+
+  // Foundation files
+  "foundation.title": { zh: "核心文件", en: "Core Files", ru: "Опорные файлы" },
+  "foundation.story_bible": { zh: "世界观设定", en: "Story Bible", ru: "Сеттинг и канон" },
+  "foundation.volume_outline": { zh: "卷纲规划", en: "Volume Outline", ru: "План тома" },
+  "foundation.book_rules": { zh: "叙事规则", en: "Narrative Rules", ru: "Правила повествования" },
+  "foundation.current_state": { zh: "状态卡", en: "State Card", ru: "Карточка состояния" },
+  "foundation.pending_hooks": { zh: "伏笔池", en: "Pending Hooks", ru: "Заделы" },
+  "foundation.subplot_board": { zh: "支线进度", en: "Subplot Board", ru: "Сюжетные линии" },
+  "foundation.emotional_arcs": { zh: "感情线", en: "Emotional Arcs", ru: "Эмоциональные арки" },
+  "foundation.character_matrix": { zh: "角色矩阵", en: "Character Matrix", ru: "Матрица персонажей" },
+
+  // Summary section
+  "summary.world": { zh: "世界观", en: "World", ru: "Мир" },
+  "summary.characters": { zh: "角色", en: "Characters", ru: "Персонажи" },
+
+  // Character section
+  "character.title": { zh: "角色", en: "Characters", ru: "Персонажи" },
+  "character.tags": { zh: "标签", en: "Tags", ru: "Теги" },
+  "character.current": { zh: "当前", en: "Current", ru: "Сейчас" },
+
+  // Chapters section
+  "chaptersSection.title": { zh: "章节", en: "Chapters", ru: "Главы" },
+  "chaptersSection.empty": { zh: "暂无章节", en: "No chapters", ru: "Глав пока нет" },
+
+  // Progress section (pipeline stages)
+  "progress.title": { zh: "执行", en: "Pipeline", ru: "Этапы" },
+  "progress.init.generateFoundation": { zh: "生成基础设定", en: "Generate foundation", ru: "Создание основания" },
+  "progress.init.saveBookConfig": { zh: "保存书籍配置", en: "Save book config", ru: "Сохранение настроек книги" },
+  "progress.init.writeFoundation": { zh: "写入基础设定文件", en: "Write foundation files", ru: "Запись опорных файлов" },
+  "progress.init.initControl": { zh: "初始化控制文档", en: "Init control docs", ru: "Инициализация служебных документов" },
+  "progress.init.createSnapshot": { zh: "创建初始快照", en: "Create initial snapshot", ru: "Создание стартового снимка" },
+  "progress.write.prepareInput": { zh: "准备章节输入", en: "Prepare chapter input", ru: "Подготовка входных данных" },
+  "progress.write.draft": { zh: "撰写章节草稿", en: "Draft chapter", ru: "Черновик главы" },
+  "progress.write.persistChapter": { zh: "落盘最终章节", en: "Persist final chapter", ru: "Сохранение финальной главы" },
+  "progress.write.generateTruth": { zh: "生成最终真相文件", en: "Generate truth files", ru: "Обновление канонических фактов" },
+  "progress.write.verifyTruth": { zh: "校验真相文件变更", en: "Verify truth diffs", ru: "Проверка изменений канона" },
+  "progress.write.syncMemory": { zh: "同步记忆索引", en: "Sync memory index", ru: "Синхронизация индекса памяти" },
+  "progress.write.updateIndex": { zh: "更新章节索引与快照", en: "Update index & snapshot", ru: "Обновление индекса и снимка" },
+
+  // ServiceConfigSourceCard
+  "svcSrc.loading": { zh: "正在读取配置来源…", en: "Loading config source…", ru: "Загрузка источника настроек…" },
+  "svcSrc.loadFailed": { zh: "读取配置来源失败", en: "Failed to load config source", ru: "Не удалось загрузить источник настроек" },
+  "svcSrc.switchFailed": { zh: "切换配置来源失败", en: "Failed to switch config source", ru: "Не удалось переключить источник настроек" },
+  "svcSrc.title": { zh: "LLM 配置来源", en: "LLM Config Source", ru: "Источник настроек LLM" },
+  "svcSrc.studioRuntime": { zh: "Studio 运行时：", en: "Studio runtime:", ru: "Среда Studio:" },
+  "svcSrc.usingStudio": { zh: " 使用服务页配置和 Studio 密钥", en: " using service-page config and Studio secrets", ru: " используются настройки страницы провайдеров и ключи Studio" },
+  "svcSrc.switching": { zh: "切换中…", en: "Switching…", ru: "Переключение…" },
+  "svcSrc.useStudio": { zh: "使用 Studio 配置", en: "Use Studio config", ru: "Использовать настройки Studio" },
+  "svcSrc.legacyEnvWarn": {
+    zh: "检测到旧配置标记为 `.env` 优先。Studio 运行时不会使用它；CLI、daemon 和部署环境仍可按 env 覆盖层使用。",
+    en: "Legacy config marks `.env` as preferred. Studio runtime ignores it; CLI, daemon and deployments still apply the env overlay.",
+    ru: "В сохранённых настройках `.env` отмечен как приоритетный. Studio его игнорирует; CLI, демон и окружения деплоя по-прежнему используют env-оверлей.",
+  },
+  "svcSrc.envDetectedTitle": { zh: "检测到 LLM 环境变量覆盖：", en: "LLM env override detected:", ru: "Обнаружен env-оверлей для LLM:" },
+  "svcSrc.envUnknownSource": { zh: "已检测到但未定位来源", en: "detected but source unknown", ru: "обнаружен, но источник неизвестен" },
+  "svcSrc.envProject": { zh: "项目 .env", en: "project .env", ru: ".env проекта" },
+  "svcSrc.envGlobal": { zh: "全局 ~/.inkos/.env", en: "global ~/.inkos/.env", ru: "глобальный ~/.inkos/.env" },
+  "svcSrc.apiKeySet": { zh: "已设置", en: "set", ru: "задан" },
+  "svcSrc.apiKeyMissing": { zh: "未设置", en: "missing", ru: "не задан" },
+  "svcSrc.envIgnoredHint": {
+    zh: "当前虽然检测到 .env，但 Studio 和 Agent 请求会忽略这套 LLM 覆盖；CLI、daemon 和部署环境可以使用它。",
+    en: "Although a .env was detected, Studio and Agent requests ignore this LLM overlay; CLI, daemon and deployments can still use it.",
+    ru: "Файл .env обнаружен, но Studio и запросы агента этот LLM-оверлей игнорируют; CLI, демон и среды деплоя продолжат им пользоваться.",
+  },
+  "svcSrc.envNoneHint": {
+    zh: "未检测到目录或全局 `.env` 里的 LLM 覆盖变量。当前会直接使用项目配置和 Studio 服务配置。",
+    en: "No LLM overrides found in project or global `.env`. Project config and Studio service config are used directly.",
+    ru: "Переменных LLM-оверлея в проектном или глобальном `.env` не найдено. Используются настройки проекта и страницы провайдеров Studio.",
+  },
+
+  // Service groups
+  "serviceGroup.overseas": { zh: "海外原厂", en: "Overseas vendors", ru: "Зарубежные провайдеры" },
+  "serviceGroup.china": { zh: "国产原厂", en: "Chinese vendors", ru: "Китайские провайдеры" },
+  "serviceGroup.aggregator": { zh: "聚合 / 二手 API", en: "Aggregators / proxies", ru: "Агрегаторы / прокси" },
+  "serviceGroup.local": { zh: "本地 / 订阅", en: "Local / subscription", ru: "Локально / по подписке" },
+  "serviceGroup.codingPlan": { zh: "CodingPlan", en: "CodingPlan", ru: "CodingPlan" },
+  "serviceGroup.short.overseas": { zh: "海外", en: "Overseas", ru: "За рубежом" },
+  "serviceGroup.short.china": { zh: "国产", en: "China", ru: "Китай" },
+  "serviceGroup.short.aggregator": { zh: "聚合", en: "Aggreg.", ru: "Агрегаторы" },
+  "serviceGroup.short.local": { zh: "本地", en: "Local", ru: "Локально" },
+  "serviceGroup.short.codingPlan": { zh: "CodingPlan", en: "CodingPlan", ru: "CodingPlan" },
+
+  // Truth files (legacy shim warning)
+  "truth.legacyShimTitle": { zh: "兼容层只读 / Read-only compat shim", en: "Read-only compatibility shim", ru: "Слой совместимости только для чтения" },
+  "truth.legacyShimBody": {
+    zh: "本文件已废弃，仅供外部读取。权威来源：",
+    en: "This file is deprecated and read-only. Authoritative source:",
+    ru: "Файл устарел и доступен только для чтения. Актуальный источник:",
+  },
+  "truth.editLabel": { zh: "编辑", en: "Edit", ru: "Редактировать" },
+  "truth.cancelLabel": { zh: "取消", en: "Cancel", ru: "Отмена" },
+  "truth.saveFailed": { zh: "保存失败", en: "Failed to save", ru: "Не удалось сохранить" },
+
+  // Dashboard extras
+  "dash.noModelsTitle": { zh: "还没有配置 AI 模型", en: "No AI model configured", ru: "Модель ИИ ещё не настроена" },
+  "dash.noModelsBody": { zh: "配好一个服务商才能开始创作", en: "Configure a provider to start writing", ru: "Подключите провайдера, чтобы начать работу" },
+  "dash.goConfigure": { zh: "去配置", en: "Configure", ru: "Настроить" },
+  "dash.writeFailed": { zh: "写作启动失败", en: "Write failed", ru: "Не удалось запустить запись" },
+
+  // BookCreate extras (loading + missing-id error)
+  "create.loadingDraft": { zh: "读取共享草案中…", en: "Loading shared draft…", ru: "Загрузка общего черновика…" },
+  "create.missingBookIdError": {
+    zh: "创建完成后没有返回书籍 ID。",
+    en: "Create succeeded but no book id was returned.",
+    ru: "Создание прошло, но идентификатор книги не вернулся.",
+  },
 } as const satisfies Record<string, Record<Lang, string>>;
 
 export type StringKey = keyof typeof strings;
@@ -339,6 +567,12 @@ export function resolveLang(projectLanguage: string | null | undefined): Lang {
 export function useI18n(override?: Lang) {
   const { data } = useApi<{ language: string }>("/project");
   const lang: Lang = override ?? resolveLang(data?.language);
+
+  // Mirror the active language into the chat store's hook-free i18n shim
+  // so toast / error strings raised from zustand actions match the UI.
+  // Done synchronously (no useEffect) so the call is safe in test renderers
+  // that invoke the hook outside the React render lifecycle.
+  setStoreLang(lang);
 
   function t(key: StringKey): string {
     return strings[key][lang];

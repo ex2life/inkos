@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Users, ChevronDown } from "lucide-react";
 import { useChatStore } from "../../store/chat";
 import { fetchJson } from "../../hooks/use-api";
+import type { TFunction } from "../../hooks/use-i18n";
 import { SidebarCard } from "./SidebarCard";
 import { cn } from "../../lib/utils";
 
@@ -51,8 +52,11 @@ function getRoleColor(role: string): string {
   return "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400";
 }
 
-function CharacterCard({ char }: { readonly char: CharacterInfo }) {
+function CharacterCard({ char, t }: { readonly char: CharacterInfo; readonly t: TFunction }) {
   const [expanded, setExpanded] = useState(false);
+  // 定位 / 标签 / 当前 are field labels emitted by the Chinese-locale agent
+  // for the character matrix file. Treat them as identifiers from the backend
+  // and surface a localised label to operators.
   const role = char.fields["定位"] ?? char.fields["Role"] ?? "";
   const tags = char.fields["标签"] ?? char.fields["Tags"] ?? "";
   const current = char.fields["当前"] ?? char.fields["Current"] ?? "";
@@ -77,10 +81,10 @@ function CharacterCard({ char }: { readonly char: CharacterInfo }) {
       {expanded && (
         <div className="px-2.5 pb-2.5 space-y-1">
           {tags && (
-            <p className="text-xs text-muted-foreground"><span className="text-muted-foreground/60">标签</span> {tags}</p>
+            <p className="text-xs text-muted-foreground"><span className="text-muted-foreground/60">{t("character.tags")}</span> {tags}</p>
           )}
           {current && (
-            <p className="text-xs text-muted-foreground"><span className="text-muted-foreground/60">当前</span> {current}</p>
+            <p className="text-xs text-muted-foreground"><span className="text-muted-foreground/60">{t("character.current")}</span> {current}</p>
           )}
           {Object.entries(char.fields)
             .filter(([k]) => !["定位", "Role", "标签", "Tags", "当前", "Current"].includes(k))
@@ -97,9 +101,10 @@ function CharacterCard({ char }: { readonly char: CharacterInfo }) {
 
 interface CharacterSectionProps {
   readonly bookId: string;
+  readonly t: TFunction;
 }
 
-export function CharacterSection({ bookId }: CharacterSectionProps) {
+export function CharacterSection({ bookId, t }: CharacterSectionProps) {
   const [characters, setCharacters] = useState<CharacterInfo[]>([]);
   const bookDataVersion = useChatStore((s) => s.bookDataVersion);
 
@@ -118,10 +123,10 @@ export function CharacterSection({ bookId }: CharacterSectionProps) {
   if (characters.length === 0) return null;
 
   return (
-    <SidebarCard title="角色">
+    <SidebarCard title={t("character.title")}>
       <div className="space-y-1.5">
         {characters.map((char) => (
-          <CharacterCard key={char.name} char={char} />
+          <CharacterCard key={char.name} char={char} t={t} />
         ))}
       </div>
     </SidebarCard>

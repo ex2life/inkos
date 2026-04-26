@@ -75,7 +75,6 @@ export function ChatPage({ activeBookId, nav, theme, t, sse: _sse }: ChatPagePro
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const isZh = t("nav.connected") === "\u5DF2\u8FDE\u63A5";
   const hasBook = Boolean(activeBookId);
 
   // Derived: is the assistant currently streaming/thinking/executing tools?
@@ -204,9 +203,7 @@ export function ChatPage({ activeBookId, nav, theme, t, sse: _sse }: ChatPagePro
     void sendMessage(activeSessionId, command, activeBookId);
   };
 
-  const emptyGuidance = isZh
-    ? "\u544A\u8BC9\u6211\u4F60\u60F3\u5199\u4EC0\u4E48\u2014\u2014\u9898\u6750\u3001\u4E16\u754C\u89C2\u3001\u4E3B\u89D2\u3001\u6838\u5FC3\u51B2\u7A81"
-    : "Tell me what you want to write \u2014 genre, world, protagonist, core conflict";
+  const emptyGuidance = t("chat.empty.guidance");
 
   return (
     <div className="flex flex-col h-full flex-1 min-w-0">
@@ -305,7 +302,7 @@ export function ChatPage({ activeBookId, nav, theme, t, sse: _sse }: ChatPagePro
               <Message from="assistant">
                 <MessageContent>
                   <Shimmer className="text-sm" duration={1.5}>
-                    {isZh ? "思考中..." : "Thinking..."}
+                    {t("chat.thinking")}
                   </Shimmer>
                 </MessageContent>
               </Message>
@@ -321,7 +318,7 @@ export function ChatPage({ activeBookId, nav, theme, t, sse: _sse }: ChatPagePro
           <QuickActions
             onAction={handleQuickAction}
             disabled={loading || !activeSessionId}
-            isZh={isZh}
+            t={t}
           />
         </div>
       )}
@@ -336,7 +333,7 @@ export function ChatPage({ activeBookId, nav, theme, t, sse: _sse }: ChatPagePro
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(input); } }}
-                  placeholder={isZh ? "输入指令..." : "Enter command..."}
+                  placeholder={t("chat.inputPlaceholder")}
                   disabled={loading || !activeSessionId}
                   rows={1}
                   className="flex-1 bg-transparent text-sm leading-6 placeholder:text-muted-foreground/50 outline-none! border-none! ring-0! shadow-none focus:outline-none! focus:ring-0! focus:border-none! resize-none disabled:opacity-50 max-h-[200px] overflow-y-auto"
@@ -352,12 +349,12 @@ export function ChatPage({ activeBookId, nav, theme, t, sse: _sse }: ChatPagePro
               </div>
               <div className="flex items-center gap-2 px-3 pb-2 border-t border-border/20 pt-1.5">
                 {modelPickerStatus === "loading" ? (
-                  <span className="text-xs text-muted-foreground/40 animate-pulse">加载模型...</span>
+                  <span className="text-xs text-muted-foreground/40 animate-pulse">{t("chat.loadingModels")}</span>
                 ) : modelPickerStatus === "ready" ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-muted text-sm transition-colors cursor-pointer">
                       <span className="font-medium text-xs truncate max-w-[140px]">
-                        {selectedModel ?? "选择模型"}
+                        {selectedModel ?? t("chat.selectModel")}
                       </span>
                       <ChevronDown size={14} className="text-muted-foreground" />
                     </DropdownMenuTrigger>
@@ -367,6 +364,7 @@ export function ChatPage({ activeBookId, nav, theme, t, sse: _sse }: ChatPagePro
                       selectedService={selectedService}
                       onSelect={setSelectedModel}
                       onManage={() => nav.toServices()}
+                      t={t}
                     />
                   </DropdownMenu>
                 ) : (
@@ -374,7 +372,7 @@ export function ChatPage({ activeBookId, nav, theme, t, sse: _sse }: ChatPagePro
                     onClick={() => nav.toServices()}
                     className="text-xs text-muted-foreground/50 hover:text-primary transition-colors"
                   >
-                    配置模型 →
+                    {t("chat.configureModel")}
                   </button>
                 )}
               </div>
@@ -391,12 +389,14 @@ function ModelPickerContent({
   selectedService,
   onSelect,
   onManage,
+  t,
 }: {
   groupedModels: ReadonlyArray<{ service: string; label: string; models: ReadonlyArray<{ id: string; name?: string }> }>;
   selectedModel: string | null;
   selectedService: string | null;
   onSelect: (model: string, service: string) => void;
   onManage: () => void;
+  t: TFunction;
 }) {
   const [search, setSearch] = useState("");
   const filtered = useMemo(() => filterModelGroups(groupedModels, search), [groupedModels, search]);
@@ -408,7 +408,7 @@ function ModelPickerContent({
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="搜索模型..."
+          placeholder={t("chat.searchModels")}
           className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/40"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
@@ -439,13 +439,13 @@ function ModelPickerContent({
         ))}
         {filtered.length === 0 && (
           <div className="px-3 py-4 text-xs text-muted-foreground/50 text-center italic">
-            无匹配模型
+            {t("chat.noMatchModel")}
           </div>
         )}
       </div>
       <div className="border-t border-border/30">
         <DropdownMenuItem onClick={onManage} className="text-primary">
-          管理服务商
+          {t("chat.manageProviders")}
         </DropdownMenuItem>
       </div>
     </DropdownMenuContent>

@@ -3,6 +3,13 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import { join, resolve, basename } from "node:path";
 import { PipelineRunner, type BookConfig, type FanficMode } from "@actalk/inkos-core";
 import { loadConfig, buildPipelineConfig, findProjectRoot, resolveBookId, log, logError } from "../utils.js";
+import {
+  formatFanficCanonMissing,
+  formatFanficInvalidMode,
+  formatFanficSourceDirEmpty,
+  formatFanficSourceTooShort,
+  resolveCliLanguage,
+} from "../localization.js";
 
 export const fanficCommand = new Command("fanfic")
   .description("Fan fiction writing tools (同人创作)");
@@ -23,19 +30,20 @@ fanficCommand
     try {
       const config = await loadConfig();
       const root = findProjectRoot();
+      const language = resolveCliLanguage(opts.lang ?? config.language);
 
       const mode = opts.mode as FanficMode;
       if (!["canon", "au", "ooc", "cp"].includes(mode)) {
-        throw new Error(`无效的同人模式："${mode}"。可选：canon, au, ooc, cp`);
+        throw new Error(formatFanficInvalidMode(language, mode));
       }
 
       // Read source material
       const sourcePath = resolve(opts.from);
-      const sourceText = await readSourceMaterial(sourcePath);
+      const sourceText = await readSourceMaterial(sourcePath, language);
       const sourceName = basename(sourcePath);
 
       if (!sourceText || sourceText.length < 100) {
-        throw new Error(`源素材文件内容过短（${sourceText.length} 字符）。请提供至少 100 字符的原作素材。`);
+        throw new Error(formatFanficSourceTooShort(language, sourceText.length));
       }
 
       const bookId = opts.title
@@ -107,11 +115,14 @@ fanficCommand
       const state = new StateManager(root);
       const bookDir = state.bookDir(bookId);
 
+      const book = await state.loadBookConfig(bookId);
+      const language = resolveCliLanguage(book.language);
+
       let canon: string;
       try {
         canon = await readFile(join(bookDir, "story/fanfic_canon.md"), "utf-8");
       } catch {
-        throw new Error(`该书没有同人正典文件。用 inkos fanfic init 创建同人书。`);
+        throw new Error(formatFanficCanonMissing(language));
       }
 
       if (opts.json) {
@@ -145,9 +156,10 @@ fanficCommand
       const state = new StateManager(root);
       const book = await state.loadBookConfig(bookId);
 
+      const language = resolveCliLanguage(book.language);
       const mode = (book.fanficMode ?? "canon") as FanficMode;
       const sourcePath = resolve(opts.from);
-      const sourceText = await readSourceMaterial(sourcePath);
+      const sourceText = await readSourceMaterial(sourcePath, language);
       const sourceName = basename(sourcePath);
 
       if (!opts.json) log(`Refreshing fanfic canon for "${bookId}" from ${sourceName}...`);
@@ -170,13 +182,16 @@ fanficCommand
     }
   });
 
-async function readSourceMaterial(sourcePath: string): Promise<string> {
+async function readSourceMaterial(
+  sourcePath: string,
+  language: import("../localization.js").CliLanguage,
+): Promise<string> {
   const s = await stat(sourcePath);
   if (s.isDirectory()) {
     const files = await readdir(sourcePath);
     const textFiles = files.filter((f) => f.endsWith(".txt") || f.endsWith(".md"));
     if (textFiles.length === 0) {
-      throw new Error(`目录 ${sourcePath} 中没有 .txt 或 .md 文件。`);
+      throw new Error(formatFanficSourceDirEmpty(language, sourcePath));
     }
     const contents = await Promise.all(
       textFiles.sort().map((f) => readFile(join(sourcePath, f), "utf-8")),

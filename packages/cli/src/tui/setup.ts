@@ -8,7 +8,7 @@ import {
   cyan, green, yellow, gray, red,
   brightCyan, brightGreen, brightWhite,
 } from "./ansi.js";
-import { resolveTuiLocale, type TuiLocale } from "./i18n.js";
+import { getTuiCopy, resolveTuiLocale, type TuiLocale } from "./i18n.js";
 import { GLOBAL_ENV_PATH } from "../utils.js";
 
 const PROVIDERS = ["openai", "anthropic", "custom"] as const;
@@ -47,62 +47,15 @@ export interface InteractiveSetupCopy {
 }
 
 export function buildInteractiveSetupCopy(locale: TuiLocale): InteractiveSetupCopy {
-  if (locale === "en") {
-    return {
-      title: "LLM Setup",
-      subtitle: "Configure your model provider to start writing.",
-      steps: {
-        provider: "Provider",
-        baseUrl: "Base URL",
-        apiKey: "API Key",
-        model: "Model",
-        scope: "Save scope",
-      },
-      hints: {
-        provider: "openai / anthropic / custom (OpenAI-compatible proxy)",
-        baseUrl: "Your API endpoint",
-        model: "e.g. gpt-4o, claude-sonnet-4-20250514, deepseek-chat",
-        scope: "global = all projects, project = this directory only",
-      },
-      defaults: {
-        provider: "openai",
-        baseUrl: "(default)",
-        scope: "[global]",
-      },
-      scopeChoices: {
-        global: "all projects",
-        project: "this directory",
-      },
-      savedTo: "Saved to",
-    };
-  }
-
+  const setup = getTuiCopy(locale).setup;
   return {
-    title: "模型配置",
-    subtitle: "配置模型服务后即可开始使用。",
-    steps: {
-      provider: "服务提供方",
-      baseUrl: "接口地址",
-      apiKey: "API 密钥",
-      model: "模型",
-      scope: "保存范围",
-    },
-    hints: {
-      provider: "openai / anthropic / custom（兼容 OpenAI 的代理）",
-      baseUrl: "你的 API 入口地址",
-      model: "例如 gpt-5.4、claude-sonnet-4-20250514、deepseek-chat",
-      scope: "global = 所有项目，project = 仅当前目录",
-    },
-    defaults: {
-      provider: "openai",
-      baseUrl: "（默认）",
-      scope: "[global]",
-    },
-    scopeChoices: {
-      global: "所有项目",
-      project: "当前目录",
-    },
-    savedTo: "已保存到",
+    title: setup.title,
+    subtitle: setup.subtitle,
+    steps: setup.steps,
+    hints: setup.hints,
+    defaults: setup.defaults,
+    scopeChoices: setup.scopeChoices,
+    savedTo: setup.savedTo,
   };
 }
 
@@ -111,18 +64,11 @@ export function buildAutoInitMessages(projectName: string, locale: TuiLocale): {
   readonly initialized: string;
   readonly envTemplateHeader: string;
 } {
-  if (locale === "en") {
-    return {
-      initializing: `Initializing project in ${projectName}/ ...`,
-      initialized: "Project initialized",
-      envTemplateHeader: "# LLM Configuration — run inkos tui to configure interactively",
-    };
-  }
-
+  const autoInit = getTuiCopy(locale).setup.autoInit;
   return {
-    initializing: `正在初始化项目：${projectName}/ ...`,
-    initialized: "项目已初始化",
-    envTemplateHeader: "# LLM 配置 —— 运行 inkos tui 进行交互式配置",
+    initializing: autoInit.initializing(projectName),
+    initialized: autoInit.initialized,
+    envTemplateHeader: autoInit.envTemplateHeader,
   };
 }
 

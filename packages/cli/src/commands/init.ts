@@ -3,6 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { log, logError } from "../utils.js";
 import { initializeProjectDirectory } from "../project-bootstrap.js";
+import { formatInitCreateExample, resolveCliLanguage } from "../localization.js";
 
 export const initCommand = new Command("init")
   .description("Initialize an InkOS project (current directory by default)")
@@ -22,12 +23,7 @@ export const initCommand = new Command("init")
 
       log(`Project initialized at ${projectDir}`);
       log("");
-      const exampleCreate =
-        projectLanguage === "en"
-          ? "  inkos book create --title 'My Novel' --genre progression --platform royalroad --lang en"
-          : projectLanguage === "ru"
-          ? "  inkos book create --title 'Моя книга' --genre urban --platform other --lang ru"
-          : "  inkos book create --title '我的小说' --genre xuanhuan --platform tomato";
+      const exampleCreate = formatInitCreateExample(resolveCliLanguage(projectLanguage));
       if (global) {
         log("Global LLM config detected. Ready to go!");
         log("");

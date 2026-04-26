@@ -1,16 +1,31 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatAgentContextSuffix,
   formatBookCreateCreating,
   formatBookCreateCreated,
   formatBookCreateNextStep,
+  formatConfigListModelsEmpty,
+  formatConfigListModelsHeader,
+  formatDoctorHintApiKey,
+  formatDoctorHintBaseUrl,
+  formatDoctorHintModel,
+  formatDoctorHintStream,
+  formatDoctorOpenAiHint,
+  formatFanficCanonMissing,
+  formatFanficInvalidMode,
+  formatFanficSourceDirEmpty,
+  formatFanficSourceTooShort,
+  formatGenreCreateTemplate,
   formatImportCanonComplete,
   formatImportCanonStart,
   formatImportChaptersComplete,
   formatImportChaptersDiscovery,
   formatImportChaptersResume,
+  formatInitCreateExample,
   formatWriteNextComplete,
   formatWriteNextProgress,
   formatWriteNextResultLines,
+  formatWriteStateRepairRequired,
   resolveCliLanguage,
 } from "../localization.js";
 
@@ -181,5 +196,64 @@ describe("CLI localization", () => {
       "Канон импортирован: story/parent_canon.md",
       "Writer и auditor автоматически подхватят этот файл в режиме спин-оффа.",
     ]);
+  });
+
+  it("formats fanfic, doctor, config, write, agent, init and genre helpers in Russian", () => {
+    expect(formatFanficInvalidMode("ru", "xyz"))
+      .toBe('Недопустимый режим фанфика: «xyz». Допустимо: canon, au, ooc, cp');
+    expect(formatFanficSourceTooShort("ru", 42))
+      .toBe("Исходный материал слишком короткий (42 симв.). Дай минимум 100 символов исходника.");
+    expect(formatFanficCanonMissing("ru"))
+      .toBe("У книги нет файла канона фанфика. Создай фанфик через «inkos fanfic init».");
+    expect(formatFanficSourceDirEmpty("ru", "/tmp/src"))
+      .toBe("В каталоге /tmp/src нет файлов .txt или .md.");
+
+    expect(formatDoctorOpenAiHint("ru"))
+      .toBe("Уже перепробованы комбинации chat/responses и stream on/off; если ошибка осталась, проверь имя модели, путь baseUrl или совместимость провайдера.");
+    expect(formatDoctorHintBaseUrl("ru"))
+      .toBe("Возможно, неверный baseUrl — проверь, что INKOS_LLM_BASE_URL содержит полный путь (например, /v1).");
+    expect(formatDoctorHintStream("ru"))
+      .toBe("Свери с документацией провайдера: эндпоинт требует stream=true, stream=false или вовсе не поддерживает стрим?");
+    expect(formatDoctorHintModel("ru"))
+      .toBe("Проверь, что имя модели верное (INKOS_LLM_MODEL).");
+    expect(formatDoctorHintApiKey("ru"))
+      .toBe("Неверный API-ключ — проверь INKOS_LLM_API_KEY.");
+
+    expect(formatConfigListModelsEmpty("ru", "openai"))
+      .toBe("openai: нет доступных моделей (возможно, нужны --api-key и --base-url).");
+    expect(formatConfigListModelsHeader("ru", "openai", 3))
+      .toBe("openai: моделей — 3\n");
+
+    expect(formatWriteStateRepairRequired("ru"))
+      .toBe("Сначала почини state — пакетная запись остановлена.");
+
+    expect(formatAgentContextSuffix("ru", "по жанрам"))
+      .toBe("Дополнительный контекст: по жанрам");
+
+    expect(formatInitCreateExample("ru"))
+      .toBe("  inkos book create --title 'Моя книга' --genre urban --platform other --lang ru");
+    // Sanity: zh and en branches still respond as expected.
+    expect(formatInitCreateExample("zh"))
+      .toBe("  inkos book create --title '我的小说' --genre xuanhuan --platform tomato");
+    expect(formatInitCreateExample("en"))
+      .toBe("  inkos book create --title 'My Novel' --genre progression --platform royalroad --lang en");
+
+    const ruGenre = formatGenreCreateTemplate("ru", {
+      id: "fantasy",
+      name: "Фэнтези",
+      numerical: false,
+      powerScaling: true,
+      eraResearch: false,
+    });
+    expect(ruGenre).toContain("name: Фэнтези");
+    expect(ruGenre).toContain("id: fantasy");
+    expect(ruGenre).toContain('chapterTypes: ["развитие", "завязка", "переход", "развязка"]');
+    expect(ruGenre).toContain('fatigueWords: ["шокирован", "невероятно", "немыслимо"]');
+    expect(ruGenre).toContain("numericalSystem: false");
+    expect(ruGenre).toContain("powerScaling: true");
+    expect(ruGenre).toContain("eraResearch: false");
+    expect(ruGenre).toContain("## Запреты жанра");
+    expect(ruGenre).toContain("## Указания по нарративу");
+    expect(ruGenre).toContain("(опиши акценты повествования и требования к стилю для этого жанра)");
   });
 });

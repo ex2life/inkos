@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, Plus, Search, X } from "lucide-react";
 import { GROUP_LABELS, GROUP_ORDER, GROUP_SHORT_LABELS } from "../constants/service-groups";
+import { useI18n, type TFunction } from "../hooks/use-i18n";
 import { useServiceStore } from "../store/service";
 import type { EndpointGroup, ServiceInfo } from "../store/service";
 
@@ -21,7 +22,7 @@ function SkeletonCard() {
   );
 }
 
-function ServiceCard({ svc, onClick }: { svc: ServiceInfo; onClick: () => void }) {
+function ServiceCard({ svc, onClick, t }: { svc: ServiceInfo; onClick: () => void; t: TFunction }) {
   return (
     <button
       onClick={onClick}
@@ -37,13 +38,14 @@ function ServiceCard({ svc, onClick }: { svc: ServiceInfo; onClick: () => void }
         <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${svc.connected ? "bg-emerald-500" : "bg-muted-foreground/30"}`} />
       </div>
       <span className="text-xs text-muted-foreground/60">
-        {svc.connected ? "已连接" : "未配置"}
+        {svc.connected ? t("service.list.connected") : t("service.list.notConfigured")}
       </span>
     </button>
   );
 }
 
 export function ServiceListPage({ nav }: { nav: Nav }) {
+  const { t } = useI18n();
   const services = useServiceStore((s) => s.services);
   const loading = useServiceStore((s) => s.servicesLoading);
   const fetchServices = useServiceStore((s) => s.fetchServices);
@@ -124,13 +126,13 @@ export function ServiceListPage({ nav }: { nav: Nav }) {
           onClick={nav.toDashboard}
           className="inline-flex items-center rounded-lg border border-border/50 bg-card/60 px-3 py-1.5 font-medium text-foreground hover:bg-secondary/50 transition-colors"
         >
-          首页
+          {t("service.list.breadcrumbHome")}
         </button>
         <span className="text-border">/</span>
-        <span className="text-foreground">服务商管理</span>
+        <span className="text-foreground">{t("service.list.title")}</span>
       </div>
 
-      <h1 className="font-serif text-2xl">服务商管理</h1>
+      <h1 className="font-serif text-2xl">{t("service.list.title")}</h1>
 
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/40" />
@@ -138,14 +140,14 @@ export function ServiceListPage({ nav }: { nav: Nav }) {
           type="text"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="搜索服务商"
+          placeholder={t("service.list.searchPlaceholder")}
           className="w-full rounded-lg border border-border/60 bg-background py-2 pl-9 pr-9 text-sm outline-none focus:border-primary/50"
         />
         {query && (
           <button
             onClick={() => setQuery("")}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground"
-            aria-label="清空搜索"
+            aria-label={t("service.list.clearSearch")}
           >
             <X size={14} />
           </button>
@@ -162,7 +164,7 @@ export function ServiceListPage({ nav }: { nav: Nav }) {
               : "border-border/60 text-muted-foreground hover:bg-secondary/50",
           ].join(" ")}
         >
-          全部 {bankServices.length}
+          {t("service.list.all")} {bankServices.length}
         </button>
         {GROUP_ORDER.map((group) => {
           const selected = selectedGroups.has(group);
@@ -187,7 +189,7 @@ export function ServiceListPage({ nav }: { nav: Nav }) {
             onClick={() => setSelectedGroups(new Set())}
             className="inline-flex items-center rounded-full px-3 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
-            清除筛选
+            {t("service.list.clearFilters")}
           </button>
         )}
       </div>
@@ -198,7 +200,7 @@ export function ServiceListPage({ nav }: { nav: Nav }) {
           checked={onlyConnected}
           onChange={(event) => setOnlyConnected(event.target.checked)}
         />
-        <span>只看已连接 ({connectedCount})</span>
+        <span>{t("service.list.onlyConnected")} ({connectedCount})</span>
       </label>
 
       <div className="h-px bg-border/30" />
@@ -223,6 +225,7 @@ export function ServiceListPage({ nav }: { nav: Nav }) {
                   key={svc.service}
                   svc={svc}
                   onClick={() => nav.toServiceDetail(svc.service)}
+                  t={t}
                 />
               ))}
             </div>
@@ -233,7 +236,7 @@ export function ServiceListPage({ nav }: { nav: Nav }) {
       {showCustomSection && (
         <section className="space-y-3">
           <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">
-            自定义服务
+            {t("service.list.customSection")}
           </h2>
           <div className="grid grid-cols-2 gap-3">
             {filteredCustom.map((svc) => (
@@ -241,6 +244,7 @@ export function ServiceListPage({ nav }: { nav: Nav }) {
                 key={svc.service}
                 svc={svc}
                 onClick={() => nav.toServiceDetail(svc.service)}
+                t={t}
               />
             ))}
             {canCreateCustom && (
@@ -249,7 +253,7 @@ export function ServiceListPage({ nav }: { nav: Nav }) {
                 className="flex min-h-[92px] flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border/40 p-5 text-muted-foreground/60 transition-all hover:border-primary/30 hover:text-muted-foreground"
               >
                 <Plus size={18} />
-                <span className="text-xs">自定义服务</span>
+                <span className="text-xs">{t("service.list.customCard")}</span>
               </button>
             )}
           </div>
@@ -258,7 +262,7 @@ export function ServiceListPage({ nav }: { nav: Nav }) {
 
       {!loading && filtered.length === 0 && filteredCustom.length === 0 && !canCreateCustom && (
         <div className="rounded-lg border border-dashed border-border/40 p-8 text-center text-sm text-muted-foreground">
-          没有匹配的服务商
+          {t("service.list.empty")}
         </div>
       )}
     </div>

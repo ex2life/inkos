@@ -7,6 +7,15 @@ import {
   evaluateSqliteMemorySupport,
   inspectNodeRuntimePinFiles,
 } from "../runtime-requirements.js";
+import {
+  formatDoctorHintApiKey,
+  formatDoctorHintBaseUrl,
+  formatDoctorHintModel,
+  formatDoctorHintStream,
+  formatDoctorOpenAiHint,
+  resolveCliLanguage,
+  type CliLanguage,
+} from "../localization.js";
 
 function buildDoctorProbePlans(
   preferredApiFormat: "chat" | "responses" | undefined,
@@ -95,6 +104,14 @@ export const doctorCommand = new Command("doctor")
   .action(async (opts: { repairNodeRuntime?: boolean }) => {
     const checks: Array<{ name: string; ok: boolean; detail: string }> = [];
     const root = findProjectRoot();
+    let language: CliLanguage = "zh";
+    try {
+      const { loadConfig } = await import("../utils.js");
+      const cfg = await loadConfig({ requireApiKey: false });
+      language = resolveCliLanguage(cfg.language);
+    } catch {
+      // No config yet — fall back to default language; hints stay readable.
+    }
 
     if (opts.repairNodeRuntime) {
       const repair = await ensureNodeRuntimePinFiles(root);
@@ -328,7 +345,7 @@ export const doctorCommand = new Command("doctor")
           checks.push({
             name: "  Hint",
             ok: false,
-            detail: "当前已自动尝试 chat/responses 与流式开关组合；如果仍失败，问题更可能在模型名、baseUrl 路径或服务商兼容性本身。",
+            detail: formatDoctorOpenAiHint(language),
           });
         }
       }
@@ -337,14 +354,14 @@ export const doctorCommand = new Command("doctor")
       const hints: string[] = [];
 
       if (errMsg.includes("Connection error") || errMsg.includes("ECONNREFUSED") || errMsg.includes("fetch failed")) {
-        hints.push("baseUrl 可能不正确，检查 INKOS_LLM_BASE_URL 是否包含完整路径（如 /v1）");
+        hints.push(formatDoctorHintBaseUrl(language));
       }
       if (errMsg.includes("400")) {
-        hints.push("检查提供方文档，确认该接口要求 stream=true、stream=false，还是根本不支持 stream");
-        hints.push("检查模型名称是否正确（INKOS_LLM_MODEL）");
+        hints.push(formatDoctorHintStream(language));
+        hints.push(formatDoctorHintModel(language));
       }
       if (errMsg.includes("401")) {
-        hints.push("API Key 无效，检查 INKOS_LLM_API_KEY");
+        hints.push(formatDoctorHintApiKey(language));
       }
 
       checks.push({

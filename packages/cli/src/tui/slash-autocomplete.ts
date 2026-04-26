@@ -1,25 +1,32 @@
-export const SLASH_COMMANDS = [
-  "/new 输入你的想法",
-  "/draft",
-  "/create",
-  "/discard",
-  "/write",
-  "/books",
-  "/open <book>",
-  "/mode <auto|semi|manual>",
-  "/rewrite <n>",
-  "/focus <text>",
-  "/truth <file> <content>",
-  "/rename <from> => <to>",
-  "/replace <n> <from> => <to>",
-  "/export [txt|md|epub]",
-  "/help",
-  "/status",
-  "/clear",
-  "/depth <light|normal|deep>",
-  "/quit",
-  "/exit",
-] as const;
+import { getTuiCopy, resolveTuiLocale, type TuiLocale } from "./i18n.js";
+
+export function buildSlashCommands(locale: TuiLocale = resolveTuiLocale()): readonly string[] {
+  const newHint = getTuiCopy(locale).slash.newCommandHint;
+  return [
+    newHint,
+    "/draft",
+    "/create",
+    "/discard",
+    "/write",
+    "/books",
+    "/open <book>",
+    "/mode <auto|semi|manual>",
+    "/rewrite <n>",
+    "/focus <text>",
+    "/truth <file> <content>",
+    "/rename <from> => <to>",
+    "/replace <n> <from> => <to>",
+    "/export [txt|md|epub]",
+    "/help",
+    "/status",
+    "/clear",
+    "/depth <light|normal|deep>",
+    "/quit",
+    "/exit",
+  ];
+}
+
+export const SLASH_COMMANDS: readonly string[] = buildSlashCommands();
 
 export type SlashNavigationDirection = "up" | "down";
 

@@ -399,12 +399,7 @@ export function BookCreate({ nav, theme, t }: { nav: Nav; theme: Theme; t: TFunc
       const data = await runAgentInstruction("/create");
       const bookId = data.session?.activeBookId;
       if (!bookId) {
-        const missingIdMessage = projectLang === "zh"
-          ? "创建完成后没有返回书籍 ID。"
-          : projectLang === "ru"
-            ? "Создание прошло, но идентификатор книги не вернулся."
-            : "Create succeeded but no book id was returned.";
-        throw new Error(missingIdMessage);
+        throw new Error(t("create.missingBookIdError"));
       }
       setStatus(data.response ?? null);
       setDraft(undefined);
@@ -471,13 +466,7 @@ export function BookCreate({ nav, theme, t }: { nav: Nav; theme: Theme; t: TFunc
             </div>
 
             {loadingDraft ? (
-              <div className="text-sm text-muted-foreground">{
-                projectLang === "zh"
-                  ? "读取共享草案中…"
-                  : projectLang === "ru"
-                    ? "Загружаю общий черновик…"
-                    : "Loading shared draft…"
-              }</div>
+              <div className="text-sm text-muted-foreground">{t("create.loadingDraft")}</div>
             ) : draft ? (
               <div className="space-y-4">
                 {summaryRows.length > 0 ? (

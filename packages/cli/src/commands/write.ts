@@ -4,7 +4,7 @@ import { readdir, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { loadConfig, buildPipelineConfig, findProjectRoot, getLegacyMigrationHint, resolveContext, resolveBookId, log, logError } from "../utils.js";
-import { formatWriteNextComplete, formatWriteNextProgress, formatWriteNextResultLines, resolveCliLanguage } from "../localization.js";
+import { formatWriteNextComplete, formatWriteNextProgress, formatWriteNextResultLines, formatWriteStateRepairRequired, resolveCliLanguage } from "../localization.js";
 
 export const writeCommand = new Command("write")
   .description("Write chapters");
@@ -62,9 +62,7 @@ writeCommand
 
         if (result.status === "state-degraded") {
           if (!opts.json) {
-            log(language === "en"
-              ? "State repair required before continuing. Stopping batch."
-              : "需要先修复 state，已停止后续连写。");
+            log(formatWriteStateRepairRequired(language));
           }
           break;
         }

@@ -2,7 +2,8 @@ import { Command } from "commander";
 import { writeFile, mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { listAvailableGenres, readGenreProfile, getBuiltinGenresDir } from "@actalk/inkos-core";
-import { findProjectRoot, log, logError } from "../utils.js";
+import { findProjectRoot, log, logError, loadConfig } from "../utils.js";
+import { formatGenreCreateTemplate, resolveCliLanguage } from "../localization.js";
 
 export const genreCommand = new Command("genre")
   .description("Manage genre profiles");
@@ -89,28 +90,22 @@ genreCommand
 
       await mkdir(genresDir, { recursive: true });
 
+      let language = resolveCliLanguage(undefined);
+      try {
+        const config = await loadConfig({ requireApiKey: false });
+        language = resolveCliLanguage(config.language);
+      } catch {
+        // No project config — fall back to default zh template.
+      }
+
       const name = opts.name || id;
-      const template = `---
-name: ${name}
-id: ${id}
-chapterTypes: ["推进章", "布局章", "过渡章", "回收章"]
-fatigueWords: ["震惊", "不可思议", "难以置信"]
-numericalSystem: ${opts.numerical}
-powerScaling: ${opts.power}
-eraResearch: ${opts.era}
-pacingRule: "每2-3章有一个明确的进展或反馈"
-satisfactionTypes: ["目标达成", "困难克服", "真相揭示"]
-auditDimensions: [1,2,3,6,7,8,9,10,13,14,15,16,17,18,19]
----
-
-## 题材禁忌
-
-- (根据题材添加禁忌)
-
-## 叙事指导
-
-(根据题材描述叙事重心和风格要求)
-`;
+      const template = formatGenreCreateTemplate(language, {
+        id,
+        name,
+        numerical: Boolean(opts.numerical),
+        powerScaling: Boolean(opts.power),
+        eraResearch: Boolean(opts.era),
+      });
 
       await writeFile(filePath, template, "utf-8");
       log(`Created genre profile: ${filePath}`);

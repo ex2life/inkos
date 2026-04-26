@@ -7,6 +7,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { useI18n, type StringKey } from "@/hooks/use-i18n";
 import type { DynamicToolUIPart, ToolUIPart } from "ai";
 import {
   CheckCircleIcon,
@@ -44,14 +45,14 @@ export type ToolHeaderProps = {
     }
 );
 
-const statusLabels: Record<ToolPart["state"], string> = {
-  "approval-requested": "等待确认",
-  "approval-responded": "已响应",
-  "input-available": "执行中",
-  "input-streaming": "处理中",
-  "output-available": "已完成",
-  "output-denied": "已拒绝",
-  "output-error": "出错",
+const STATUS_LABEL_KEYS: Record<ToolPart["state"], StringKey> = {
+  "approval-requested": "tool.status.waitingApproval",
+  "approval-responded": "tool.status.responded",
+  "input-available": "tool.status.running",
+  "input-streaming": "tool.status.streaming",
+  "output-available": "tool.status.completed",
+  "output-denied": "tool.status.denied",
+  "output-error": "tool.status.outputError",
 };
 
 const statusIcons: Record<ToolPart["state"], ReactNode> = {
@@ -64,12 +65,18 @@ const statusIcons: Record<ToolPart["state"], ReactNode> = {
   "output-error": <XCircleIcon className="size-4 text-red-600" />,
 };
 
-export const getStatusBadge = (status: ToolPart["state"]) => (
-  <Badge className="gap-1.5 rounded-full text-xs" variant="secondary">
-    {statusIcons[status]}
-    {statusLabels[status]}
-  </Badge>
-);
+export const StatusBadge = ({ status }: { status: ToolPart["state"] }) => {
+  const { t } = useI18n();
+  return (
+    <Badge className="gap-1.5 rounded-full text-xs" variant="secondary">
+      {statusIcons[status]}
+      {t(STATUS_LABEL_KEYS[status])}
+    </Badge>
+  );
+};
+
+// Backwards-compat alias for callers that still import getStatusBadge.
+export const getStatusBadge = (status: ToolPart["state"]) => <StatusBadge status={status} />;
 
 export const ToolHeader = ({
   className,
@@ -93,7 +100,7 @@ export const ToolHeader = ({
       <div className="flex items-center gap-2">
         <WrenchIcon className="size-4 text-muted-foreground" />
         <span className="font-medium text-sm">{title ?? derivedName}</span>
-        {getStatusBadge(state)}
+        <StatusBadge status={state} />
       </div>
       <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
     </CollapsibleTrigger>

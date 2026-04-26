@@ -46,4 +46,36 @@ describe("useI18n with ru override", () => {
   it("returns Russian for doctor.allPassed (a longer message)", () => {
     expect(t("doctor.allPassed")).toBe("Все проверки пройдены — окружение в порядке");
   });
+
+  it("returns Russian for service.list.* keys (ServiceListPage)", () => {
+    expect(t("service.list.title")).toBe("Провайдеры моделей");
+    expect(t("service.list.searchPlaceholder")).toBe("Поиск провайдеров");
+    expect(t("service.list.onlyConnected")).toBe("Только подключённые");
+    expect(t("service.list.clearFilters")).toBe("Сбросить фильтры");
+    expect(t("service.list.all")).toBe("Все");
+  });
+
+  it("returns Russian for service.detail.* keys (ServiceDetailPage)", () => {
+    expect(t("service.detail.testConnection")).toBe("Проверить соединение");
+    expect(t("service.detail.saveButton")).toBe("Сохранить");
+    expect(t("service.detail.connected")).toBe("Подключено");
+    expect(t("service.detail.advancedParams")).toBe("Дополнительные параметры");
+    expect(t("service.detail.streamResponse")).toBe("Потоковый ответ");
+  });
+});
+
+describe("resolveLang routes ru to service.* Russian translations", () => {
+  it("resolves project language=\"ru\" so the t() returns Russian for service.list.title", () => {
+    const lang = resolveLang("ru");
+    const { t } = useI18n(lang);
+    expect(lang).toBe("ru");
+    expect(t("service.list.title")).toBe("Провайдеры моделей");
+  });
+
+  it("resolves project language=\"ru\" so the t() returns Russian for service.detail.testConnection", () => {
+    const lang = resolveLang("ru");
+    const { t } = useI18n(lang);
+    expect(lang).toBe("ru");
+    expect(t("service.detail.testConnection")).toBe("Проверить соединение");
+  });
 });

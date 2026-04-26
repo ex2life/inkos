@@ -15,4 +15,18 @@ describe("tui setup i18n", () => {
     expect(buildAutoInitMessages("山海", "zh-CN").initializing).toContain("正在初始化项目：山海");
     expect(buildAutoInitMessages("harbor", "en").initialized).toContain("Project initialized");
   });
+
+  it("builds Russian setup copy", () => {
+    const copy = buildInteractiveSetupCopy("ru-RU");
+    expect(copy.title).toBe("Настройка LLM");
+    expect(copy.subtitle).toContain("Настройте провайдера");
+    expect(copy.steps.provider).toBe("Провайдер");
+    expect(copy.steps.scope).toBe("Область сохранения");
+    expect(copy.scopeChoices.project).toBe("этот каталог");
+    expect(copy.savedTo).toBe("Сохранено в");
+
+    const init = buildAutoInitMessages("гавань", "ru-RU");
+    expect(init.initializing).toContain("Инициализация проекта: гавань");
+    expect(init.initialized).toBe("Проект инициализирован");
+  });
 });

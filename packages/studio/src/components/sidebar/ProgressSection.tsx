@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import type { SSEMessage } from "../../hooks/use-sse";
+import type { TFunction, StringKey } from "../../hooks/use-i18n";
 import { Loader2, Check } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { SidebarCard } from "./SidebarCard";
 
+// Step identifiers are stable (matched against backend log messages by their
+// Chinese names emitted by the agent runtime). The translation table maps
+// them to the operator-facing label key.
 const INIT_BOOK_STEPS = [
   "生成基础设定",
   "保存书籍配置",
@@ -22,13 +26,29 @@ const WRITE_CHAPTER_STEPS = [
   "更新章节索引与快照",
 ] as const;
 
+const STEP_LABEL_KEYS: Record<string, StringKey> = {
+  "生成基础设定": "progress.init.generateFoundation",
+  "保存书籍配置": "progress.init.saveBookConfig",
+  "写入基础设定文件": "progress.init.writeFoundation",
+  "初始化控制文档": "progress.init.initControl",
+  "创建初始快照": "progress.init.createSnapshot",
+  "准备章节输入": "progress.write.prepareInput",
+  "撰写章节草稿": "progress.write.draft",
+  "落盘最终章节": "progress.write.persistChapter",
+  "生成最终真相文件": "progress.write.generateTruth",
+  "校验真相文件变更": "progress.write.verifyTruth",
+  "同步记忆索引": "progress.write.syncMemory",
+  "更新章节索引与快照": "progress.write.updateIndex",
+};
+
 type StepStatus = "pending" | "active" | "done";
 
 interface ProgressSectionProps {
   readonly sse: { messages: ReadonlyArray<SSEMessage>; connected: boolean };
+  readonly t: TFunction;
 }
 
-export function ProgressSection({ sse }: ProgressSectionProps) {
+export function ProgressSection({ sse, t }: ProgressSectionProps) {
   const [operation, setOperation] = useState<"idle" | "init" | "write">("idle");
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
   const [activeStep, setActiveStep] = useState<string | null>(null);
@@ -76,12 +96,14 @@ export function ProgressSection({ sse }: ProgressSectionProps) {
   if (!steps) return null;
 
   return (
-    <SidebarCard title="执行">
+    <SidebarCard title={t("progress.title")}>
       <ul className="space-y-2">
         {steps.map((step, i) => {
           const status: StepStatus = completedSteps.has(step) ? "done"
             : activeStep === step ? "active"
             : "pending";
+          const labelKey = STEP_LABEL_KEYS[step];
+          const stepLabel = labelKey ? t(labelKey) : step;
           return (
             <li key={step} className="flex items-center gap-2.5">
               <StepIndicator index={i + 1} status={status} />
@@ -91,7 +113,7 @@ export function ProgressSection({ sse }: ProgressSectionProps) {
                 status === "active" && "text-foreground font-medium",
                 status === "pending" && "text-muted-foreground/50",
               )}>
-                {step}
+                {stepLabel}
               </span>
             </li>
           );

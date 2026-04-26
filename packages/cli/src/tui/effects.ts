@@ -277,37 +277,7 @@ export function formatResultCard(content: string, intent?: string): string {
 }
 
 export function intentToBadge(intent: string, locale: TuiLocale = resolveTuiLocale()): string {
-  const labels = locale === "en"
-    ? {
-        write_next: " WRITE ",
-        revise_chapter: " REVISE ",
-        rewrite_chapter: " REWRITE ",
-        update_focus: " FOCUS ",
-        explain_status: " STATUS ",
-        explain_failure: " DEBUG ",
-        pause_book: " PAUSE ",
-        list_books: " BOOKS ",
-        select_book: " SELECT ",
-        switch_mode: " MODE ",
-        rename_entity: " RENAME ",
-        patch_chapter_text: " PATCH ",
-        edit_truth: " TRUTH ",
-      }
-    : {
-        write_next: " 写作 ",
-        revise_chapter: " 修订 ",
-        rewrite_chapter: " 重写 ",
-        update_focus: " 焦点 ",
-        explain_status: " 状态 ",
-        explain_failure: " 调试 ",
-        pause_book: " 暂停 ",
-        list_books: " 作品 ",
-        select_book: " 选择 ",
-        switch_mode: " 模式 ",
-        rename_entity: " 改名 ",
-        patch_chapter_text: " 修补 ",
-        edit_truth: " 真相 ",
-      };
+  const labels = getTuiCopy(locale).effects.intentBadges;
   const backgrounds: Record<string, string> = {
     write_next: bgMagenta,
     revise_chapter: bgBlue,
@@ -445,102 +415,21 @@ function formatElapsed(ms: number): string {
 }
 
 export function buildStyledHelpSections(locale: TuiLocale = resolveTuiLocale()): StyledHelpSection[] {
-  if (locale === "en") {
-    return [
-      {
-        title: "Writing",
-        commands: [
-          ["/write", "Write the next chapter (full pipeline)"],
-          ["/rewrite <n>", "Rewrite chapter N from scratch"],
-        ],
-      },
-      {
-        title: "Navigation",
-        commands: [
-          ["/books", "List all books"],
-          ["/open <book>", "Select active book"],
-          ["/status", "Show current status"],
-        ],
-      },
-      {
-        title: "Control",
-        commands: [
-          ["/mode <auto|semi|manual>", "Switch automation mode"],
-          ["/focus <text>", "Update current focus"],
-        ],
-      },
-      {
-        title: "Session",
-        commands: [
-          ["/clear", "Clear screen"],
-          ["/help", "Show this help"],
-          ["/quit", "Exit InkOS TUI"],
-        ],
-      },
-    ];
-  }
-
-  return [
-    {
-      title: "写作",
-      commands: [
-        ["/write", "完整跑一轮下一章写作"],
-        ["/rewrite <n>", "从头重写第 N 章"],
-      ],
-    },
-    {
-      title: "导航",
-      commands: [
-        ["/books", "列出全部作品"],
-        ["/open <book>", "切换当前作品"],
-        ["/status", "查看当前状态"],
-      ],
-    },
-    {
-      title: "控制",
-      commands: [
-        ["/mode <auto|semi|manual>", "切换自动化模式"],
-        ["/focus <text>", "更新当前焦点"],
-      ],
-    },
-    {
-      title: "会话",
-      commands: [
-        ["/clear", "清空当前屏幕"],
-        ["/help", "显示帮助"],
-        ["/quit", "退出 InkOS TUI"],
-      ],
-    },
-  ];
+  return getTuiCopy(locale).effects.help.sections.map((section) => ({
+    title: section.title,
+    commands: section.commands,
+  }));
 }
 
 function buildHelpFooter(locale: TuiLocale): { readonly title: string; readonly examples: readonly string[] } {
-  if (locale === "en") {
-    return {
-      title: "Natural language also works:",
-      examples: ['"continue writing" "write next chapter" "pause" "rename Lin Jin to Zhang San"'],
-    };
-  }
-
+  const help = getTuiCopy(locale).effects.help;
   return {
-    title: "自然语言同样可用：",
-    examples: ['"继续写" "写下一章" "暂停" "把林烬改成张三"'],
+    title: help.footerTitle,
+    examples: help.footerExamples,
   };
 }
 
 function localizeThemeLabel(label: string, locale: TuiLocale): string {
-  if (locale === "en") {
-    return label;
-  }
-
-  const labels: Record<string, string> = {
-    thinking: "思考中",
-    writing: "写作中",
-    auditing: "审计中",
-    revising: "修订中",
-    planning: "规划中",
-    composing: "生成中",
-    loading: "加载中",
-  };
-  return labels[label] ?? label;
+  const themeLabels = getTuiCopy(locale).effects.themeLabels;
+  return (themeLabels as Record<string, string>)[label] ?? label;
 }

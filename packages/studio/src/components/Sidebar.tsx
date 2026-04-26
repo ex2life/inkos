@@ -227,7 +227,7 @@ export function Sidebar({ nav, activePage, sse, t }: {
                     <div className="mt-0.5">
                       {bookSessions.map((session) => {
                         const isActiveSession = isActiveBook && activeSessionId === session.sessionId;
-                        const label = getSessionLabel(session);
+                        const label = getSessionLabel(session, t);
                         return (
                           <div
                             key={session.sessionId}
@@ -245,7 +245,7 @@ export function Sidebar({ nav, activePage, sse, t }: {
                                 <Loader2 size={12} className="shrink-0 animate-spin text-primary" />
                               ) : (
                                 <span className="shrink-0 text-[11px] text-muted-foreground/40">
-                                  {formatRelativeTime(session.sessionId)}
+                                  {formatRelativeTime(session.sessionId, t)}
                                 </span>
                               )}
                             </button>
@@ -262,7 +262,7 @@ export function Sidebar({ nav, activePage, sse, t }: {
                                   }}
                                 >
                                   <Pencil size={14} />
-                                  <span>改名</span>
+                                  <span>{t("sidebar.rename")}</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
@@ -270,7 +270,7 @@ export function Sidebar({ nav, activePage, sse, t }: {
                                   onClick={() => setDeleteTarget({ sessionId: session.sessionId, title: label })}
                                 >
                                   <Trash2 size={14} />
-                                  <span>删除</span>
+                                  <span>{t("sidebar.delete")}</span>
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -283,7 +283,7 @@ export function Sidebar({ nav, activePage, sse, t }: {
                         className="w-full flex items-center gap-2 pl-9 pr-2 py-1 text-xs text-muted-foreground/50 hover:text-foreground transition-colors"
                       >
                         <Plus size={12} />
-                        <span>新建会话</span>
+                        <span>{t("sidebar.newSession")}</span>
                       </button>
                     </div>
                   )}
@@ -398,7 +398,7 @@ export function Sidebar({ nav, activePage, sse, t }: {
           className="sm:max-w-[360px] p-4 gap-3"
         >
           <DialogHeader className="space-y-0 gap-0">
-            <DialogTitle className="font-sans text-sm font-medium">重命名会话</DialogTitle>
+            <DialogTitle className="font-sans text-sm font-medium">{t("sidebar.renameTitle")}</DialogTitle>
           </DialogHeader>
           <input
             id="session-rename-input"
@@ -411,7 +411,7 @@ export function Sidebar({ nav, activePage, sse, t }: {
                 void handleRenameConfirm();
               }
             }}
-            placeholder="输入新标题"
+            placeholder={t("sidebar.renamePlaceholder")}
             className="w-full rounded-md border border-border/60 bg-background px-3 py-1.5 text-sm outline-none focus:border-border"
           />
           <DialogFooter className="gap-1 sm:gap-1">
@@ -423,7 +423,7 @@ export function Sidebar({ nav, activePage, sse, t }: {
               }}
               className="px-3 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              取消
+              {t("sidebar.cancel")}
             </button>
             <button
               type="button"
@@ -431,7 +431,7 @@ export function Sidebar({ nav, activePage, sse, t }: {
               disabled={!renameValue.trim()}
               className="px-3 py-1 text-xs font-medium rounded-md bg-foreground text-background hover:opacity-90 transition-opacity disabled:opacity-30"
             >
-              保存
+              {t("sidebar.save")}
             </button>
           </DialogFooter>
         </DialogContent>
@@ -439,10 +439,10 @@ export function Sidebar({ nav, activePage, sse, t }: {
 
       <ConfirmDialog
         open={deleteTarget !== null}
-        title="删除会话"
-        message={`确认删除“${deleteTarget?.title ?? ""}”吗？该操作只删除这条会话，不影响书籍内容。`}
-        confirmLabel="删除"
-        cancelLabel="取消"
+        title={t("sidebar.deleteSessionTitle")}
+        message={t("sidebar.deleteSessionMessage").replace("{title}", deleteTarget?.title ?? "")}
+        confirmLabel={t("sidebar.delete")}
+        cancelLabel={t("sidebar.cancel")}
         variant="danger"
         onConfirm={() => void handleDeleteConfirm()}
         onCancel={() => setDeleteTarget(null)}
@@ -451,31 +451,35 @@ export function Sidebar({ nav, activePage, sse, t }: {
   );
 }
 
-function getSessionLabel(session: { sessionId: string; title: string | null; messages: ReadonlyArray<{ role: string; content: string }> }): string {
+function getSessionLabel(
+  session: { sessionId: string; title: string | null; messages: ReadonlyArray<{ role: string; content: string }> },
+  t: TFunction,
+): string {
   if (session.title) return session.title;
-  // 后端会在第一条用户消息发送时立即把消息内容持久化为占位标题。
-  // 这里处理的是"已有消息但标题还没同步回来"的短暂中间态（乐观显示）。
+  // The backend persists the first user message as a placeholder title on send.
+  // This branch handles the short-lived intermediate state — message exists locally
+  // but the synced title has not arrived yet (optimistic display).
   const firstUserMsg = session.messages.find((m) => m.role === "user")?.content?.trim();
   if (firstUserMsg) {
     const oneLine = firstUserMsg.replace(/\s+/g, " ");
     return oneLine.length > 20 ? `${oneLine.slice(0, 20)}…` : oneLine;
   }
-  return "新会话";
+  return t("sidebar.newSessionFallback");
 }
 
-function formatRelativeTime(sessionId: string): string {
+function formatRelativeTime(sessionId: string, t: TFunction): string {
   const rawTs = Number(sessionId.split("-")[0]);
   if (!Number.isFinite(rawTs)) return "";
   const diff = Date.now() - rawTs;
   const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return "刚刚";
-  if (minutes < 60) return `${minutes} 分钟`;
+  if (minutes < 1) return t("sidebar.justNow");
+  if (minutes < 60) return t("sidebar.minutesAgo").replace("{n}", String(minutes));
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时`;
+  if (hours < 24) return t("sidebar.hoursAgo").replace("{n}", String(hours));
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} 天`;
+  if (days < 30) return t("sidebar.daysAgo").replace("{n}", String(days));
   const months = Math.floor(days / 30);
-  return `${months} 个月`;
+  return t("sidebar.monthsAgo").replace("{n}", String(months));
 }
 
 function SidebarItem({ label, icon, active, onClick, badge, badgeColor }: {

@@ -240,3 +240,187 @@ export function formatImportCanonComplete(language: CliLanguage): string[] {
     }),
   ];
 }
+
+export function formatFanficInvalidMode(language: CliLanguage, mode: string): string {
+  return localize(language, {
+    zh: `无效的同人模式："${mode}"。可选：canon, au, ooc, cp`,
+    en: `Invalid fanfic mode: "${mode}". Allowed: canon, au, ooc, cp`,
+    ru: `Недопустимый режим фанфика: «${mode}». Допустимо: canon, au, ooc, cp`,
+  });
+}
+
+export function formatFanficSourceTooShort(language: CliLanguage, charCount: number): string {
+  return localize(language, {
+    zh: `源素材文件内容过短（${charCount} 字符）。请提供至少 100 字符的原作素材。`,
+    en: `Source material is too short (${charCount} chars). Provide at least 100 chars of source text.`,
+    ru: `Исходный материал слишком короткий (${charCount} симв.). Дай минимум 100 символов исходника.`,
+  });
+}
+
+export function formatFanficCanonMissing(language: CliLanguage): string {
+  return localize(language, {
+    zh: `该书没有同人正典文件。用 inkos fanfic init 创建同人书。`,
+    en: `This book has no fanfic canon file. Run "inkos fanfic init" to create a fanfic book.`,
+    ru: `У книги нет файла канона фанфика. Создай фанфик через «inkos fanfic init».`,
+  });
+}
+
+export function formatFanficSourceDirEmpty(language: CliLanguage, sourcePath: string): string {
+  return localize(language, {
+    zh: `目录 ${sourcePath} 中没有 .txt 或 .md 文件。`,
+    en: `No .txt or .md files found in directory ${sourcePath}.`,
+    ru: `В каталоге ${sourcePath} нет файлов .txt или .md.`,
+  });
+}
+
+export function formatDoctorOpenAiHint(language: CliLanguage): string {
+  return localize(language, {
+    zh: "当前已自动尝试 chat/responses 与流式开关组合；如果仍失败，问题更可能在模型名、baseUrl 路径或服务商兼容性本身。",
+    en: "Already tried chat/responses and stream on/off combos; remaining failures usually mean a wrong model name, baseUrl path, or provider incompatibility.",
+    ru: "Уже перепробованы комбинации chat/responses и stream on/off; если ошибка осталась, проверь имя модели, путь baseUrl или совместимость провайдера.",
+  });
+}
+
+export function formatDoctorHintBaseUrl(language: CliLanguage): string {
+  return localize(language, {
+    zh: "baseUrl 可能不正确，检查 INKOS_LLM_BASE_URL 是否包含完整路径（如 /v1）",
+    en: "baseUrl may be wrong — check that INKOS_LLM_BASE_URL includes the full path (e.g. /v1).",
+    ru: "Возможно, неверный baseUrl — проверь, что INKOS_LLM_BASE_URL содержит полный путь (например, /v1).",
+  });
+}
+
+export function formatDoctorHintStream(language: CliLanguage): string {
+  return localize(language, {
+    zh: "检查提供方文档，确认该接口要求 stream=true、stream=false，还是根本不支持 stream",
+    en: "Check provider docs: does this endpoint require stream=true, stream=false, or not support streaming at all?",
+    ru: "Свери с документацией провайдера: эндпоинт требует stream=true, stream=false или вовсе не поддерживает стрим?",
+  });
+}
+
+export function formatDoctorHintModel(language: CliLanguage): string {
+  return localize(language, {
+    zh: "检查模型名称是否正确（INKOS_LLM_MODEL）",
+    en: "Verify the model name is correct (INKOS_LLM_MODEL).",
+    ru: "Проверь, что имя модели верное (INKOS_LLM_MODEL).",
+  });
+}
+
+export function formatDoctorHintApiKey(language: CliLanguage): string {
+  return localize(language, {
+    zh: "API Key 无效，检查 INKOS_LLM_API_KEY",
+    en: "API key is invalid — check INKOS_LLM_API_KEY.",
+    ru: "Неверный API-ключ — проверь INKOS_LLM_API_KEY.",
+  });
+}
+
+export function formatConfigListModelsEmpty(language: CliLanguage, service: string): string {
+  return localize(language, {
+    zh: `${service} 没有可用模型（可能需要 --api-key 和 --base-url）`,
+    en: `${service}: no models available (you may need --api-key and --base-url).`,
+    ru: `${service}: нет доступных моделей (возможно, нужны --api-key и --base-url).`,
+  });
+}
+
+export function formatConfigListModelsHeader(
+  language: CliLanguage,
+  service: string,
+  count: number,
+): string {
+  return localize(language, {
+    zh: `${service}：${count} 个模型\n`,
+    en: `${service}: ${count} model(s)\n`,
+    ru: `${service}: моделей — ${count}\n`,
+  });
+}
+
+export function formatWriteStateRepairRequired(language: CliLanguage): string {
+  return localize(language, {
+    zh: "需要先修复 state，已停止后续连写。",
+    en: "State repair required before continuing. Stopping batch.",
+    ru: "Сначала почини state — пакетная запись остановлена.",
+  });
+}
+
+export function formatAgentContextSuffix(language: CliLanguage, context: string): string {
+  return localize(language, {
+    zh: `补充信息：${context}`,
+    en: `Additional context: ${context}`,
+    ru: `Дополнительный контекст: ${context}`,
+  });
+}
+
+export function formatInitCreateExample(language: CliLanguage): string {
+  return localize(language, {
+    zh: "  inkos book create --title '我的小说' --genre xuanhuan --platform tomato",
+    en: "  inkos book create --title 'My Novel' --genre progression --platform royalroad --lang en",
+    ru: "  inkos book create --title 'Моя книга' --genre urban --platform other --lang ru",
+  });
+}
+
+export function formatGenreCreateTemplate(
+  language: CliLanguage,
+  options: { readonly id: string; readonly name: string; readonly numerical: boolean; readonly powerScaling: boolean; readonly eraResearch: boolean },
+): string {
+  const { id, name, numerical, powerScaling, eraResearch } = options;
+  const chapterTypes = localize(language, {
+    zh: `["推进章", "布局章", "过渡章", "回收章"]`,
+    en: `["progression", "setup", "transition", "payoff"]`,
+    ru: `["развитие", "завязка", "переход", "развязка"]`,
+  });
+  const fatigueWords = localize(language, {
+    zh: `["震惊", "不可思议", "难以置信"]`,
+    en: `["shocked", "unbelievable", "incredible"]`,
+    ru: `["шокирован", "невероятно", "немыслимо"]`,
+  });
+  const pacingRule = localize(language, {
+    zh: `"每2-3章有一个明确的进展或反馈"`,
+    en: `"Every 2-3 chapters deliver a clear progression or payoff."`,
+    ru: `"Каждые 2-3 главы — явное продвижение или отдача."`,
+  });
+  const satisfactionTypes = localize(language, {
+    zh: `["目标达成", "困难克服", "真相揭示"]`,
+    en: `["goal achieved", "obstacle overcome", "truth revealed"]`,
+    ru: `["цель достигнута", "препятствие преодолено", "правда раскрыта"]`,
+  });
+  const tabooHeader = localize(language, {
+    zh: "## 题材禁忌",
+    en: "## Genre Taboos",
+    ru: "## Запреты жанра",
+  });
+  const tabooHint = localize(language, {
+    zh: "- (根据题材添加禁忌)",
+    en: "- (add taboos specific to this genre)",
+    ru: "- (добавь запреты, характерные для жанра)",
+  });
+  const narrativeHeader = localize(language, {
+    zh: "## 叙事指导",
+    en: "## Narrative Guidance",
+    ru: "## Указания по нарративу",
+  });
+  const narrativeHint = localize(language, {
+    zh: "(根据题材描述叙事重心和风格要求)",
+    en: "(describe narrative focus and style requirements for this genre)",
+    ru: "(опиши акценты повествования и требования к стилю для этого жанра)",
+  });
+  return `---
+name: ${name}
+id: ${id}
+chapterTypes: ${chapterTypes}
+fatigueWords: ${fatigueWords}
+numericalSystem: ${numerical}
+powerScaling: ${powerScaling}
+eraResearch: ${eraResearch}
+pacingRule: ${pacingRule}
+satisfactionTypes: ${satisfactionTypes}
+auditDimensions: [1,2,3,6,7,8,9,10,13,14,15,16,17,18,19]
+---
+
+${tabooHeader}
+
+${tabooHint}
+
+${narrativeHeader}
+
+${narrativeHint}
+`;
+}

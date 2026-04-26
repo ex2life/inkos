@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { runAgentLoop } from "@actalk/inkos-core";
 import { loadConfig, createClient, findProjectRoot, resolveContext, log, logError } from "../utils.js";
+import { formatAgentContextSuffix, resolveCliLanguage } from "../localization.js";
 
 export const agentCommand = new Command("agent")
   .description("Natural language agent mode (LLM orchestrates via tool-use)")
@@ -16,9 +17,10 @@ export const agentCommand = new Command("agent")
       const client = createClient(config);
       const root = findProjectRoot();
       const context = await resolveContext(opts);
+      const language = resolveCliLanguage(config.language);
 
       const fullInstruction = context
-        ? `${instruction}\n\n补充信息：${context}`
+        ? `${instruction}\n\n${formatAgentContextSuffix(language, context)}`
         : instruction;
 
       const maxTurns = parseInt(opts.maxTurns, 10);
