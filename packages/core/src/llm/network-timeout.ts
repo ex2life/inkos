@@ -61,13 +61,15 @@ export async function configureLLMHttpTimeouts(
       }),
     );
     _configured = true;
-    if (envValue) {
-      // Surface that the user-set value was honored so misconfiguration is visible.
-      // Use process.stderr directly (no logger dependency) so this works very early.
-      process.stderr.write(
-        `[inkos] LLM HTTP timeout set to ${timeoutMs} ms (from INKOS_LLM_HTTP_TIMEOUT_MS)\n`,
-      );
-    }
+    // Always surface so operators can see the dispatcher is actually patched.
+    // If you still see fetch failures around 5 minutes after this log fires,
+    // the cap is server-side (provider / CDN / reverse-proxy idle timeout)
+    // and no client-side change can extend it — switch provider or ask them
+    // to lift their idle timeout.
+    process.stderr.write(
+      `[inkos] LLM HTTP timeout configured: ${Math.round(timeoutMs / 1000)}s` +
+        `${envValue ? " (from INKOS_LLM_HTTP_TIMEOUT_MS)" : ""}\n`,
+    );
   } catch {
     // Never fail startup because of this.
   }
