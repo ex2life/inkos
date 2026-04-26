@@ -513,7 +513,7 @@ export class PipelineRunner {
     this.logStage(stageLanguage, { zh: "生成基础设定", en: "generating foundation", ru: "генерирую базовый сеттинг" });
     const { profile: gp } = await this.loadGenreProfile(book.genre);
     const reviewer = new FoundationReviewerAgent(this.agentCtxFor("foundation-reviewer", book.id));
-    const resolvedLanguage = (book.language ?? gp.language) === "en" ? "en" as const : "zh" as const;
+    const resolvedLanguage = book.language ?? gp.language;
     const foundation = await this.generateAndReviewFoundation({
       generate: (reviewFeedback) => architect.generateFoundation(
         book,
@@ -642,7 +642,7 @@ export class PipelineRunner {
     });
 
     const reviewer = new FoundationReviewerAgent(this.agentCtxFor("foundation-reviewer", bookId));
-    const resolvedLanguage = (book.language ?? "zh") === "en" ? "en" as const : "zh" as const;
+    const resolvedLanguage = book.language ?? "zh";
     try {
       const review = await reviewer.review({
         foundation,
@@ -756,7 +756,7 @@ export class PipelineRunner {
     const reviewer = new FoundationReviewerAgent(this.agentCtxFor("foundation-reviewer", book.id));
     this.logStage(stageLanguage, { zh: "生成同人基础设定", en: "generating fanfic foundation", ru: "генерирую базовый сеттинг фанфика" });
     const { profile: gp } = await this.loadGenreProfile(book.genre);
-    const resolvedLanguage = (book.language ?? gp.language) === "en" ? "en" as const : "zh" as const;
+    const resolvedLanguage = book.language ?? gp.language;
     const foundation = await this.generateAndReviewFoundation({
       generate: (reviewFeedback) => architect.generateFanficFoundation(
         book,
@@ -1511,7 +1511,7 @@ export class PipelineRunner {
           chapterContent: finalContent,
           chapterNumber,
           chapterMemo: reducedControlInput?.chapterMemo,
-          language: pipelineLang === "en" ? "en" : "zh",
+          language: pipelineLang,
         });
         totalUsage = PipelineRunner.addUsage(totalUsage, polishOutput.tokenUsage);
         if (polishOutput.changed && polishOutput.polishedContent.trim().length > 0) {
@@ -2112,7 +2112,7 @@ export class PipelineRunner {
 
     const book = await this.state.loadBookConfig(bookId);
     const { profile: gp } = await this.loadGenreProfile(book.genre);
-    const lang = (book.language ?? gp.language) === "en" ? "en" as const : "zh" as const;
+    const lang = book.language ?? gp.language;
     const craftMethodology = buildWritingMethodologySection(lang);
     const fullStyleGuide = `${response.content}\n\n${craftMethodology}`;
     await writeFile(join(storyDir, "style_guide.md"), fullStyleGuide, "utf-8");
@@ -2331,7 +2331,7 @@ ${matrix}`,
               generate: (reviewFeedback) => architect.generateFoundationFromImport(book, allText, undefined, reviewFeedback, { importMode: "series" }),
               reviewer: new FoundationReviewerAgent(this.agentCtxFor("foundation-reviewer", input.bookId)),
               mode: "series",
-              language: resolvedLanguage === "en" ? "en" : "zh",
+              language: resolvedLanguage,
               stageLanguage: resolvedLanguage,
             })
           : await architect.generateFoundationFromImport(book, allText);

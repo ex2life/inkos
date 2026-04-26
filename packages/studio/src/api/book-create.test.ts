@@ -50,6 +50,20 @@ describe("buildStudioBookConfig", () => {
     expect(config.language).toBe("en");
     expect(config.id).toBe("english-book");
   });
+
+  it("preserves Russian as an explicit writing language", () => {
+    const config = buildStudioBookConfig(
+      {
+        title: "Русская книга",
+        genre: "other",
+        platform: "other",
+        language: "ru",
+      },
+      "2026-03-30T00:00:00.000Z",
+    );
+
+    expect(config.language).toBe("ru");
+  });
 });
 
 describe("waitForStudioBookReady", () => {

@@ -48,11 +48,15 @@ function normalizePlatform(platform?: string): Platform {
 }
 
 function deriveBookId(title: string): string {
+  // Allow ASCII letters/digits, CJK ideographs (U+4E00-U+9FFF), and Cyrillic
+  // (U+0400-U+04FF) so Russian-language book titles produce a meaningful slug
+  // instead of collapsing to a lone "-". Lowercase via the ru-RU locale so
+  // Cyrillic case-folds correctly.
   return title
-    .toLowerCase()
-    .replace(/[^a-z0-9\u4e00-\u9fff]/g, "-")
-    .replace(/-+/g, "-")
-    .slice(0, 30);
+    .toLocaleLowerCase("ru-RU")
+    .replace(/[^a-z0-9\u4e00-\u9fff\u0400-\u04ff]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 30) || "book";
 }
 
 function buildBookConfig(input: {

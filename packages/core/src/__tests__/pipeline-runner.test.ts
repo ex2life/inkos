@@ -467,6 +467,63 @@ describe("PipelineRunner", () => {
     }
   });
 
+  it("keeps Russian language through foundation review during init", async () => {
+    const root = await mkdtemp(join(tmpdir(), "inkos-init-book-ru-"));
+    const bookId = "ru-book";
+    const book: BookConfig = {
+      id: bookId,
+      title: "Русская книга",
+      platform: "other",
+      genre: "other",
+      status: "outlining",
+      targetChapters: 20,
+      chapterWordCount: 2500,
+      language: "ru",
+      createdAt: "2026-04-13T00:00:00.000Z",
+      updatedAt: "2026-04-13T00:00:00.000Z",
+    };
+
+    const runner = new PipelineRunner({
+      client: {
+        provider: "openai",
+        apiFormat: "chat",
+        stream: false,
+        defaults: {
+          temperature: 0.7,
+          thinkingBudget: 0,
+        },
+      } as ConstructorParameters<typeof PipelineRunner>[0]["client"],
+      model: "test-model",
+      projectRoot: root,
+    });
+
+    vi.spyOn(ArchitectAgent.prototype, "generateFoundation").mockResolvedValue({
+      storyBible: "# Story Bible\n",
+      volumeOutline: "# Volume Outline\n",
+      bookRules: "---\nversion: \"1.0\"\n---\n\n# Book Rules\n",
+      currentState: "# Current State\n",
+      pendingHooks: "# Pending Hooks\n",
+    });
+    const reviewSpy = vi.spyOn(FoundationReviewerAgent.prototype, "review").mockResolvedValue({
+      passed: true,
+      totalScore: 92,
+      dimensions: [],
+      overallFeedback: "ok",
+    });
+
+    try {
+      await runner.initBook(book);
+
+      expect(reviewSpy).toHaveBeenCalledWith(expect.objectContaining({
+        language: "ru",
+      }));
+      await expect(readFile(join(root, "books", bookId, "story", "author_intent.md"), "utf-8"))
+        .resolves.toContain("Авторский замысел");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("feeds foundation review feedback into the regeneration call after a rejection", async () => {
     const { root, runner, bookId } = await createRunnerFixture();
     const reviewer = new FoundationReviewerAgent({

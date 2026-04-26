@@ -61,6 +61,33 @@ describe("loadProjectConfig local provider auth", () => {
     expect(config.llm.apiKey).toBe("");
   });
 
+  it("accepts Russian project language while resolving config", async () => {
+    root = await mkdtemp(join(tmpdir(), "inkos-config-loader-ru-"));
+    for (const key of ENV_KEYS) {
+      previousEnv.set(key, process.env[key]);
+      process.env[key] = "";
+    }
+
+    await writeFile(join(root, "inkos.json"), JSON.stringify({
+      name: "ru-project",
+      version: "0.1.0",
+      language: "ru",
+      llm: {
+        provider: "openai",
+        service: "custom",
+        configSource: "studio",
+        baseUrl: "http://127.0.0.1:11434/v1",
+        model: "gpt-oss:20b",
+      },
+      notify: [],
+    }, null, 2), "utf-8");
+    await writeFile(join(root, ".env"), "", "utf-8");
+
+    const config = await loadProjectConfig(root, { consumer: "studio", requireApiKey: false });
+
+    expect(config.language).toBe("ru");
+  });
+
   it("still requires API keys for remote hosted endpoints", async () => {
     root = await mkdtemp(join(tmpdir(), "inkos-config-loader-remote-"));
     for (const key of ENV_KEYS) {

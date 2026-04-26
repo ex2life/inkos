@@ -351,6 +351,11 @@ describe("ProjectConfigSchema", () => {
     expect(result.inputGovernanceMode).toBe("v2");
   });
 
+  it("accepts Russian as a project language", () => {
+    const result = ProjectConfigSchema.parse({ ...validProject, language: "ru" });
+    expect(result.language).toBe("ru");
+  });
+
   it("rejects wrong version", () => {
     expect(() =>
       ProjectConfigSchema.parse({ ...validProject, version: "1.0.0" }),
@@ -771,6 +776,18 @@ describe("Runtime state schemas", () => {
 
     expect(result.language).toBe("en");
     expect(result.lastAppliedChapter).toBe(12);
+  });
+
+  it("accepts Russian runtime state manifests", () => {
+    const result = StateManifestSchema.parse({
+      schemaVersion: 2,
+      language: "ru",
+      lastAppliedChapter: 3,
+      projectionVersion: 1,
+      migrationWarnings: [],
+    });
+
+    expect(result.language).toBe("ru");
   });
 
   it("accepts hook, summary, and current-state payloads", () => {

@@ -384,7 +384,9 @@ async function resolveRuntimeLanguage(bookDir: string): Promise<"zh" | "en" | "r
   try {
     const raw = await readFile(join(bookDir, "book.json"), "utf-8");
     const parsed = JSON.parse(raw) as { language?: unknown };
-    return parsed.language === "zh" ? "zh" : "en";
+    if (parsed.language === "zh") return "zh";
+    if (parsed.language === "ru") return "ru";
+    return "en";
   } catch {
     return "en";
   }

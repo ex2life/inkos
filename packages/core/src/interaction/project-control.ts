@@ -143,7 +143,13 @@ async function detectProjectInteractionLanguage(projectRoot: string): Promise<"z
   try {
     const raw = await readFile(join(projectRoot, "inkos.json"), "utf-8");
     const parsed = JSON.parse(raw) as { language?: string };
-    return parsed.language === "en" ? "en" : parsed.language === "zh" ? "zh" : undefined;
+    return parsed.language === "en"
+      ? "en"
+      : parsed.language === "ru"
+        ? "ru"
+        : parsed.language === "zh"
+          ? "zh"
+          : undefined;
   } catch {
     return undefined;
   }

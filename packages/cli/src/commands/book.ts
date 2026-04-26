@@ -32,10 +32,10 @@ bookCommand
       const root = findProjectRoot();
 
       const bookId = opts.title
-        .toLowerCase()
-        .replace(/[^a-z0-9\u4e00-\u9fff]/g, "-")
-        .replace(/-+/g, "-")
-        .slice(0, 30);
+        .toLocaleLowerCase("ru-RU")
+        .replace(/[^a-z0-9一-鿿Ѐ-ӿ]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 30) || "book";
 
       const bookDir = join(root, "books", bookId);
       try {
