@@ -114,6 +114,43 @@ describe("project interaction control", () => {
     expect(failedSession.events.at(-1)?.detail).toContain("boom");
   });
 
+  it("emits a Russian stage label when a ru project's routed action throws", async () => {
+    const ruRoot = await mkdtemp(join(tmpdir(), "inkos-project-control-ru-"));
+    await mkdir(join(ruRoot, "books", "harbor"), { recursive: true });
+    await writeFile(join(ruRoot, "books", "harbor", "book.json"), "{}", "utf-8");
+    await writeFile(join(ruRoot, "inkos.json"), JSON.stringify({ language: "ru" }), "utf-8");
+    await persistProjectSession(ruRoot, {
+      ...createProjectSession(ruRoot),
+      activeBookId: "harbor",
+    });
+
+    try {
+      await expect(processProjectInteractionInput({
+        projectRoot: ruRoot,
+        input: "continue",
+        tools: {
+          listBooks: vi.fn(async () => ["harbor"]),
+          writeNextChapter: vi.fn(async () => {
+            throw new Error("ru-boom");
+          }),
+          reviseDraft: vi.fn(async () => ({ ok: true })),
+          patchChapterText: vi.fn(async () => ({ ok: true })),
+          renameEntity: vi.fn(async () => ({ ok: true })),
+          updateCurrentFocus: vi.fn(async () => ({ ok: true })),
+          updateAuthorIntent: vi.fn(async () => ({ ok: true })),
+          writeTruthFile: vi.fn(async () => ({ ok: true })),
+        },
+      })).rejects.toThrow("ru-boom");
+
+      const failedSession = await loadProjectSession(ruRoot);
+      expect(failedSession.currentExecution?.status).toBe("failed");
+      expect(failedSession.currentExecution?.stageLabel).toMatch(/^сбой выполнения:/);
+      expect(failedSession.currentExecution?.stageLabel).not.toMatch(/执行失败|failed/);
+    } finally {
+      await rm(ruRoot, { recursive: true, force: true });
+    }
+  });
+
   it("persists book selection into the shared project session", async () => {
     await persistProjectSession(projectRoot, createProjectSession(projectRoot));
 

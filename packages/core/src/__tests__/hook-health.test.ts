@@ -138,6 +138,26 @@ describe("analyzeHookHealth", () => {
     expect(issues.some((issue) => issue.description.includes("Opened 2 new hooks"))).toBe(true);
   });
 
+  it("emits Russian category and pressure label when language is ru", () => {
+    const issues = analyzeHookHealth({
+      language: "ru",
+      chapterNumber: 4,
+      hooks: [
+        createHook({
+          hookId: "H001",
+          startChapter: 1,
+          lastAdvancedChapter: 1,
+          payoffTiming: "immediate",
+          expectedPayoff: "Reveal the hidden ledger immediately after the theft.",
+        }),
+      ],
+    });
+
+    const ruIssue = issues.find((issue) => issue.category === "Долги по крючкам");
+    expect(ruIssue).toBeDefined();
+    expect(ruIssue?.description).toMatch(/просрочено|готов к закрытию|устарело/);
+  });
+
   it("does not count absorbed duplicate-family upserts as genuinely new hooks", () => {
     const issues = analyzeHookHealth({
       language: "en",

@@ -31,7 +31,7 @@ export async function validateChapterTruthPersistence(params: {
     ruleStack: RuleStack;
   };
   readonly language: LengthLanguage;
-  readonly logWarn: (message: { zh: string; en: string }) => void;
+  readonly logWarn: (message: { zh: string; en: string; ru: string }) => void;
   readonly logger?: Pick<Logger, "warn">;
 }): Promise<{
   readonly validation: ValidationResult;
@@ -90,6 +90,7 @@ export async function validateChapterTruthPersistence(params: {
     params.logWarn({
       zh: `状态校验：第${params.chapterNumber}章发现 ${validation.warnings.length} 条警告`,
       en: `State validation: ${validation.warnings.length} warning(s) for chapter ${params.chapterNumber}`,
+      ru: `Проверка состояния: в главе ${params.chapterNumber} найдено предупреждений — ${validation.warnings.length}`,
     });
     for (const warning of validation.warnings) {
       params.logger?.warn(`  [${warning.category}] ${warning.description}`);

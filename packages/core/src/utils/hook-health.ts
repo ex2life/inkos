@@ -167,12 +167,30 @@ function localizePressureLabel(
   language: "zh" | "en" | "ru",
 ): string {
   if (lifecycle.overdue) {
-    return language === "en" ? "overdue" : "已逾期";
+    if (language === "en") {
+      return "overdue";
+    }
+    if (language === "ru") {
+      return "просрочено";
+    }
+    return "已逾期";
   }
   if (lifecycle.readyToResolve) {
-    return language === "en" ? "ready to pay off" : "可回收";
+    if (language === "en") {
+      return "ready to pay off";
+    }
+    if (language === "ru") {
+      return "готов к закрытию";
+    }
+    return "可回收";
   }
-  return language === "en" ? "stale" : "陈旧";
+  if (language === "en") {
+    return "stale";
+  }
+  if (language === "ru") {
+    return "устарело";
+  }
+  return "陈旧";
 }
 
 function warning(
@@ -182,7 +200,11 @@ function warning(
 ): AuditIssue {
   return {
     severity: "warning",
-    category: language === "en" ? "Hook Debt" : "伏笔债务",
+    category: language === "en"
+      ? "Hook Debt"
+      : language === "ru"
+        ? "Долги по крючкам"
+        : "伏笔债务",
     description,
     suggestion,
   };

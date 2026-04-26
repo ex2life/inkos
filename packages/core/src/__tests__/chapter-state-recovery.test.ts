@@ -232,4 +232,46 @@ describe("chapter-state-recovery", () => {
       auditIssues: ["[warning] needs review"],
     }))).toBe("ready-for-review");
   });
+
+  it("emits a substantive Russian warning at the start of a ru-language settlement retry", async () => {
+    const writer = {
+      settleChapterState: vi.fn(async () => createWriteChapterOutput({
+        updatedState: "fixed state",
+        updatedHooks: "fixed hooks",
+      })),
+    };
+    const validator = {
+      validate: vi.fn(async () => createValidationResult({
+        passed: true,
+        warnings: [],
+      })),
+    };
+    const logWarn = vi.fn();
+
+    const result = await retrySettlementAfterValidationFailure({
+      writer: writer as never,
+      validator: validator as never,
+      book: createBook(),
+      bookDir: "/tmp/test-book",
+      chapterNumber: 5,
+      title: "Глава пятая",
+      content: "Жетон в кармане куртки.",
+      oldState: "old state",
+      oldHooks: "old hooks",
+      originalValidation: createValidationResult(),
+      language: "ru",
+      logWarn,
+      logger: { warn: vi.fn() } as never,
+    });
+
+    expect(result.kind).toBe("recovered");
+    expect(logWarn).toHaveBeenCalledWith(expect.objectContaining({
+      ru: expect.stringContaining("Проверка состояния не прошла"),
+    }));
+    const firstCall = logWarn.mock.calls[0]?.[0] as { zh: string; en: string; ru: string };
+    expect(firstCall.ru).toContain("глава 5");
+    // Russian must be its own translation, never aliased to en or zh
+    expect(firstCall.ru).not.toEqual(firstCall.en);
+    expect(firstCall.ru).not.toEqual(firstCall.zh);
+  });
 });

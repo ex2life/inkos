@@ -132,5 +132,50 @@ describe("computeHookDiagnostics — Phase 7 stale / blocked detection", () => {
     } as const;
     expect(renderHookDiagnosticMarker(diag, "zh")).toBe("");
     expect(renderHookDiagnosticMarker(diag, "en")).toBe("");
+    expect(renderHookDiagnosticMarker(diag, "ru")).toBe("");
+  });
+
+  it("renderHookDiagnosticMarker emits Russian (Cyrillic) markers for ru — not Chinese pollution", () => {
+    const diag = {
+      stale: true,
+      blocked: true,
+      missingUpstream: ["H-up"],
+      distance: 20,
+      halfLife: 10,
+      blockedDistance: 7,
+    } as const;
+    const rendered = renderHookDiagnosticMarker(diag, "ru");
+    expect(rendered).toBe(
+      "устарело (d=20/half=10); заблокировано на H-up (блокировка 7 глав)",
+    );
+    // Sanity: no Chinese characters leaked into the Russian marker.
+    expect(rendered).not.toMatch(/[一-鿿]/);
+    // And no English fallback strings either.
+    expect(rendered).not.toContain("stale");
+    expect(rendered).not.toContain("blocked on");
+  });
+
+  it("renderHookDiagnosticMarker emits Russian stale-only marker without a blocked clause", () => {
+    const diag = {
+      stale: true,
+      blocked: false,
+      missingUpstream: [],
+      distance: 15,
+      halfLife: 10,
+      blockedDistance: 0,
+    } as const;
+    expect(renderHookDiagnosticMarker(diag, "ru")).toBe("устарело (d=15/half=10)");
+  });
+
+  it("renderHookDiagnosticMarker emits Russian blocked-only marker without distance when blockedDistance is 0", () => {
+    const diag = {
+      stale: false,
+      blocked: true,
+      missingUpstream: ["H-up"],
+      distance: 5,
+      halfLife: 10,
+      blockedDistance: 0,
+    } as const;
+    expect(renderHookDiagnosticMarker(diag, "ru")).toBe("заблокировано на H-up");
   });
 });

@@ -167,6 +167,43 @@ describe("runChapterReviewCycle v9", () => {
     expect(result.revised).toBe(true);
   });
 
+  it("emits a substantive Russian stage line when auditing the draft", async () => {
+    const auditChapter = vi.fn()
+      .mockResolvedValue(createAuditResult({ overallScore: 92 }));
+    const reviseChapter = vi.fn();
+    const normalizeDraftLengthIfNeeded = vi.fn()
+      .mockImplementation(async (content: string) => ({
+        content,
+        wordCount: content.length,
+        applied: false,
+        tokenUsage: ZERO_USAGE,
+      }));
+    const logStage = vi.fn();
+    const logWarn = vi.fn();
+
+    await runChapterReviewCycle({
+      ...baseParams,
+      logStage,
+      logWarn,
+      initialOutput: {
+        content: "е".repeat(200),
+        wordCount: 200,
+        postWriteErrors: [],
+      },
+      createReviser: () => ({ reviseChapter }),
+      auditor: { auditChapter },
+      normalizeDraftLengthIfNeeded,
+    });
+
+    expect(logStage).toHaveBeenCalledWith(expect.objectContaining({
+      ru: expect.stringContaining("аудит черновика"),
+    }));
+    const firstCall = logStage.mock.calls[0]?.[0] as { zh: string; en: string; ru: string };
+    // Substantive Russian copy, not aliased to en or zh
+    expect(firstCall.ru).not.toEqual(firstCall.en);
+    expect(firstCall.ru).not.toEqual(firstCall.zh);
+  });
+
   it("stops immediately when initial score passes threshold", async () => {
     const auditChapter = vi.fn()
       .mockResolvedValue(createAuditResult({ overallScore: 88 }));

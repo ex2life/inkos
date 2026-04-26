@@ -26,10 +26,14 @@ export function sanitizeNarrativeControlText(
 ): string {
   let result = text;
 
-  result = result.replace(HOOK_ID_PATTERN, language === "en" ? "this thread" : "这条线索");
-  result = result.replace(HOOK_SLUG_PATTERN, language === "en" ? "this thread" : "这条线索");
+  const threadReplacement =
+    language === "en" ? "this thread" : language === "ru" ? "эта линия" : "这条线索";
+  const earlierSceneReplacement =
+    language === "en" ? "an earlier scene" : language === "ru" ? "ранее по тексту" : "此前";
+  result = result.replace(HOOK_ID_PATTERN, threadReplacement);
+  result = result.replace(HOOK_SLUG_PATTERN, threadReplacement);
   for (const pattern of CHAPTER_REF_PATTERNS) {
-    result = result.replace(pattern, language === "en" ? "an earlier scene" : "此前");
+    result = result.replace(pattern, earlierSceneReplacement);
   }
 
   for (const [pattern, replacement] of [...ZH_REPLACEMENTS, ...EN_REPLACEMENTS]) {
@@ -54,23 +58,32 @@ export function renderMemoAsNarrativeBlock(
   language: "zh" | "en" | "ru" = "zh",
 ): string {
   const s = (text: string) => sanitizeNarrativeControlText(text, language);
-  const isEn = language === "en";
+  const pick = <T,>(en: T, ru: T, zh: T): T =>
+    language === "en" ? en : language === "ru" ? ru : zh;
   const sections: string[] = [];
 
-  sections.push(`## ${isEn ? "Goal" : "目标"}\n- ${s(memo.goal)}`);
+  sections.push(`## ${pick("Goal", "Цель", "目标")}\n- ${s(memo.goal)}`);
 
   if (intent?.arcContext) {
-    sections.push(`## ${isEn ? "Arc Context" : "弧线背景"}\n- ${s(intent.arcContext)}`);
+    sections.push(
+      `## ${pick("Arc Context", "Контекст арки", "弧线背景")}\n- ${s(intent.arcContext)}`,
+    );
   }
 
   if (memo.threadRefs.length > 0) {
     const threads = memo.threadRefs.map((id) => `- ${id}`).join("\n");
-    sections.push(`## ${isEn ? "Thread Refs" : "关联线索"}\n${threads}`);
+    sections.push(
+      `## ${pick("Thread Refs", "Связанные линии", "关联线索")}\n${threads}`,
+    );
   }
 
   if (memo.isGoldenOpening) {
     sections.push(
-      `## ${isEn ? "Golden Opening" : "黄金开场"}\n- ${isEn ? "This is a golden opening chapter — prioritize hook-dense, high-tempo pacing." : "本章是黄金开场章——优先钩子密集、高节奏。"}`,
+      `## ${pick("Golden Opening", "Золотое открытие", "黄金开场")}\n- ${pick(
+        "This is a golden opening chapter — prioritize hook-dense, high-tempo pacing.",
+        "Это глава золотого открытия — приоритет на плотность крючков и высокий темп.",
+        "本章是黄金开场章——优先钩子密集、高节奏。",
+      )}`,
     );
   }
 
@@ -86,13 +99,15 @@ export function buildNarrativeIntentBrief(
   chapterIntent: string,
   language: "zh" | "en" | "ru" = "zh",
 ): string {
+  const pick = <T,>(en: T, ru: T, zh: T): T =>
+    language === "en" ? en : language === "ru" ? ru : zh;
   const sections = [
-    { heading: "## Goal", label: language === "en" ? "Goal" : "目标" },
-    { heading: "## Outline Node", label: language === "en" ? "Outline Node" : "当前节点" },
-    { heading: "## Must Keep", label: language === "en" ? "Keep" : "保留" },
-    { heading: "## Must Avoid", label: language === "en" ? "Avoid" : "避免" },
-    { heading: "## Style Emphasis", label: language === "en" ? "Style" : "风格" },
-    { heading: "## Structured Directives", label: language === "en" ? "Directives" : "指令" },
+    { heading: "## Goal", label: pick("Goal", "Цель", "目标") },
+    { heading: "## Outline Node", label: pick("Outline Node", "Текущий узел плана", "当前节点") },
+    { heading: "## Must Keep", label: pick("Keep", "Сохранить", "保留") },
+    { heading: "## Must Avoid", label: pick("Avoid", "Избегать", "避免") },
+    { heading: "## Style Emphasis", label: pick("Style", "Стилистический акцент", "风格") },
+    { heading: "## Structured Directives", label: pick("Directives", "Директивы", "指令") },
   ] as const;
 
   const rendered = sections
@@ -125,9 +140,12 @@ export function renderNarrativeSelectedContext(
   entries: ReadonlyArray<ContextPackage["selectedContext"][number]>,
   language: "zh" | "en" | "ru" = "zh",
 ): string {
-  const heading = language === "en" ? "Evidence" : "证据";
-  const reasonLabel = language === "en" ? "reason" : "原因";
-  const detailLabel = language === "en" ? "detail" : "细节";
+  const heading =
+    language === "en" ? "Evidence" : language === "ru" ? "Свидетельство" : "证据";
+  const reasonLabel =
+    language === "en" ? "reason" : language === "ru" ? "Причина" : "原因";
+  const detailLabel =
+    language === "en" ? "detail" : language === "ru" ? "Деталь" : "细节";
 
   return entries
     .map((entry, index) => {

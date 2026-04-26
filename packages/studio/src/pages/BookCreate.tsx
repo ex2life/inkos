@@ -78,7 +78,17 @@ const PLATFORMS_EN: ReadonlyArray<PlatformOption> = [
   { value: "other", label: "Other" },
 ];
 
-const PAGE_COPY: Record<"zh" | "en", PlatformCopy> = {
+export const PLATFORMS_RU: ReadonlyArray<PlatformOption> = [
+  { value: "author-today", label: "Author.Today" },
+  { value: "litnet", label: "Литнет" },
+  { value: "litmarket", label: "Литмаркет" },
+  { value: "samizdat", label: "Самиздат" },
+  { value: "litres-samizdat", label: "ЛитРес-Самиздат" },
+  { value: "boosty", label: "Boosty" },
+  { value: "other", label: "Другое" },
+];
+
+export const PAGE_COPY: Record<"zh" | "en" | "ru", PlatformCopy> = {
   zh: {
     idleTitle: "从一句模糊想法开始",
     idleBody: "直接描述题材、世界观、主角、核心冲突，或告诉我你想先改哪一块。共享草案会在 TUI 和 Studio Chat 之间同步。",
@@ -115,7 +125,31 @@ const PAGE_COPY: Record<"zh" | "en", PlatformCopy> = {
     helperTitle: "Recommended flow",
     helperBody: "Lock the world and protagonist first, then settle the conflict, blurb, and volume-one direction. In TUI, use /draft to inspect the same draft.",
   },
+  ru: {
+    idleTitle: "Начните с черновой идеи",
+    idleBody: "Опишите жанр, мир, протагониста и ключевой конфликт, или скажите, какую часть хотите доработать первой. Общий черновик синхронизируется между TUI и Studio Chat.",
+    promptLabel: "Доработать эту книгу",
+    promptPlaceholder: "Например: хочу портовый нуар-триллер о посреднике, который пытается легализоваться.",
+    promptPlaceholderFollowup: "Например: перенесите мир в портовый город ближайшего будущего; не выводите героиню слишком рано; первый том — про охоту за гроссбухами.",
+    submit: "Обновить черновик",
+    submitting: "Обработка…",
+    create: "Создать книгу по черновику",
+    creating: "Создание…",
+    discard: "Отбросить черновик",
+    draftHeading: "Текущий черновик основания",
+    missingHeading: "Не хватает",
+    missingHint: "Не обязательно заполнить всё сразу, но не создавайте книгу, пока основание остаётся слишком расплывчатым.",
+    syncedHint: "Этот черновик общий для TUI и Studio Chat.",
+    helperTitle: "Рекомендуемый порядок",
+    helperBody: "Сначала зафиксируйте мир и протагониста, затем определите конфликт, аннотацию и направление первого тома. В TUI команда /draft показывает тот же черновик.",
+  },
 };
+
+export function coerceProjectLang(value: string | null | undefined): "zh" | "en" | "ru" {
+  if (value === "en") return "en";
+  if (value === "ru") return "ru";
+  return "zh";
+}
 
 export function pickValidValue(current: string, available: ReadonlyArray<string>): string {
   if (current && available.includes(current)) {
@@ -124,12 +158,16 @@ export function pickValidValue(current: string, available: ReadonlyArray<string>
   return available[0] ?? "";
 }
 
-export function defaultChapterWordsForLanguage(language: "zh" | "en"): string {
-  return language === "en" ? "2000" : "3000";
+export function defaultChapterWordsForLanguage(language: "zh" | "en" | "ru"): string {
+  if (language === "en") return "2000";
+  // Russian web-novel chapters track the Chinese 3000-word baseline.
+  return "3000";
 }
 
-export function platformOptionsForLanguage(language: "zh" | "en"): ReadonlyArray<PlatformOption> {
-  return language === "en" ? PLATFORMS_EN : PLATFORMS_ZH;
+export function platformOptionsForLanguage(language: "zh" | "en" | "ru"): ReadonlyArray<PlatformOption> {
+  if (language === "en") return PLATFORMS_EN;
+  if (language === "ru") return PLATFORMS_RU;
+  return PLATFORMS_ZH;
 }
 
 export function resolveDraftInstruction(input: string, hasDraft: boolean): string {
@@ -157,27 +195,40 @@ export function canCreateFromDraft(draft?: BookCreationDraft): boolean {
 
 export function buildCreationDraftSummary(
   draft: BookCreationDraft,
-  language: "zh" | "en",
+  language: "zh" | "en" | "ru",
 ): ReadonlyArray<DraftSummaryRow> {
-  const rows = language === "en"
-    ? [
-        draft.title ? { key: "title", label: "Title", value: draft.title } : undefined,
-        draft.worldPremise ? { key: "worldPremise", label: "World", value: draft.worldPremise } : undefined,
-        draft.protagonist ? { key: "protagonist", label: "Protagonist", value: draft.protagonist } : undefined,
-        draft.conflictCore ? { key: "conflictCore", label: "Core Conflict", value: draft.conflictCore } : undefined,
-        draft.volumeOutline ? { key: "volumeOutline", label: "Volume Direction", value: draft.volumeOutline } : undefined,
-        draft.blurb ? { key: "blurb", label: "Blurb", value: draft.blurb } : undefined,
-        draft.nextQuestion ? { key: "nextQuestion", label: "Next", value: draft.nextQuestion } : undefined,
-      ]
-    : [
-        draft.title ? { key: "title", label: "书名", value: draft.title } : undefined,
-        draft.worldPremise ? { key: "worldPremise", label: "世界观", value: draft.worldPremise } : undefined,
-        draft.protagonist ? { key: "protagonist", label: "主角", value: draft.protagonist } : undefined,
-        draft.conflictCore ? { key: "conflictCore", label: "核心冲突", value: draft.conflictCore } : undefined,
-        draft.volumeOutline ? { key: "volumeOutline", label: "卷纲方向", value: draft.volumeOutline } : undefined,
-        draft.blurb ? { key: "blurb", label: "简介", value: draft.blurb } : undefined,
-        draft.nextQuestion ? { key: "nextQuestion", label: "下一步", value: draft.nextQuestion } : undefined,
-      ];
+  let rows: ReadonlyArray<DraftSummaryRow | undefined>;
+  if (language === "en") {
+    rows = [
+      draft.title ? { key: "title", label: "Title", value: draft.title } : undefined,
+      draft.worldPremise ? { key: "worldPremise", label: "World", value: draft.worldPremise } : undefined,
+      draft.protagonist ? { key: "protagonist", label: "Protagonist", value: draft.protagonist } : undefined,
+      draft.conflictCore ? { key: "conflictCore", label: "Core Conflict", value: draft.conflictCore } : undefined,
+      draft.volumeOutline ? { key: "volumeOutline", label: "Volume Direction", value: draft.volumeOutline } : undefined,
+      draft.blurb ? { key: "blurb", label: "Blurb", value: draft.blurb } : undefined,
+      draft.nextQuestion ? { key: "nextQuestion", label: "Next", value: draft.nextQuestion } : undefined,
+    ];
+  } else if (language === "ru") {
+    rows = [
+      draft.title ? { key: "title", label: "Название", value: draft.title } : undefined,
+      draft.worldPremise ? { key: "worldPremise", label: "Мир", value: draft.worldPremise } : undefined,
+      draft.protagonist ? { key: "protagonist", label: "Протагонист", value: draft.protagonist } : undefined,
+      draft.conflictCore ? { key: "conflictCore", label: "Ключевой конфликт", value: draft.conflictCore } : undefined,
+      draft.volumeOutline ? { key: "volumeOutline", label: "Направление тома", value: draft.volumeOutline } : undefined,
+      draft.blurb ? { key: "blurb", label: "Аннотация", value: draft.blurb } : undefined,
+      draft.nextQuestion ? { key: "nextQuestion", label: "Дальше", value: draft.nextQuestion } : undefined,
+    ];
+  } else {
+    rows = [
+      draft.title ? { key: "title", label: "书名", value: draft.title } : undefined,
+      draft.worldPremise ? { key: "worldPremise", label: "世界观", value: draft.worldPremise } : undefined,
+      draft.protagonist ? { key: "protagonist", label: "主角", value: draft.protagonist } : undefined,
+      draft.conflictCore ? { key: "conflictCore", label: "核心冲突", value: draft.conflictCore } : undefined,
+      draft.volumeOutline ? { key: "volumeOutline", label: "卷纲方向", value: draft.volumeOutline } : undefined,
+      draft.blurb ? { key: "blurb", label: "简介", value: draft.blurb } : undefined,
+      draft.nextQuestion ? { key: "nextQuestion", label: "下一步", value: draft.nextQuestion } : undefined,
+    ];
+  }
 
   return rows.filter((row): row is DraftSummaryRow => Boolean(row));
 }
@@ -246,7 +297,7 @@ export async function waitForBookReady(
 export function BookCreate({ nav, theme, t }: { nav: Nav; theme: Theme; t: TFunction }) {
   const c = useColors(theme);
   const { data: project } = useApi<{ language: string }>("/project");
-  const projectLang = (project?.language ?? "zh") as "zh" | "en";
+  const projectLang = coerceProjectLang(project?.language);
   const copy = PAGE_COPY[projectLang];
 
   const [draft, setDraft] = useState<BookCreationDraft | undefined>();
@@ -341,7 +392,12 @@ export function BookCreate({ nav, theme, t }: { nav: Nav; theme: Theme; t: TFunc
       const data = await runAgentInstruction("/create");
       const bookId = data.session?.activeBookId;
       if (!bookId) {
-        throw new Error(projectLang === "zh" ? "创建完成后没有返回书籍 ID。" : "Create succeeded but no book id was returned.");
+        const missingIdMessage = projectLang === "zh"
+          ? "创建完成后没有返回书籍 ID。"
+          : projectLang === "ru"
+            ? "Создание прошло, но идентификатор книги не вернулся."
+            : "Create succeeded but no book id was returned.";
+        throw new Error(missingIdMessage);
       }
       setStatus(data.response ?? null);
       setDraft(undefined);
@@ -408,7 +464,13 @@ export function BookCreate({ nav, theme, t }: { nav: Nav; theme: Theme; t: TFunc
             </div>
 
             {loadingDraft ? (
-              <div className="text-sm text-muted-foreground">{projectLang === "zh" ? "读取共享草案中…" : "Loading shared draft…"}</div>
+              <div className="text-sm text-muted-foreground">{
+                projectLang === "zh"
+                  ? "读取共享草案中…"
+                  : projectLang === "ru"
+                    ? "Загружаю общий черновик…"
+                    : "Loading shared draft…"
+              }</div>
             ) : draft ? (
               <div className="space-y-4">
                 {summaryRows.length > 0 ? (

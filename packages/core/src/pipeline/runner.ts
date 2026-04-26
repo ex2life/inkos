@@ -248,33 +248,6 @@ export class PipelineRunner {
     this.config.logger?.warn(this.localize(language, message));
   }
 
-  // Bridge for legacy bilingual messages flowing in from sibling pipeline
-  // modules (chapter-review-cycle, chapter-truth-validation, chapter-state-recovery)
-  // whose callback type is still `{ zh, en }`. Those modules' message bodies
-  // are dynamic strings built around chapter numbers and counters — we cannot
-  // hand-translate them at this boundary without semantic knowledge they don't
-  // expose. Russian operators see the English text on these particular log
-  // lines until those upstream modules are upgraded to the tri-lingual shape.
-  // No aliasing happens inside our typed logInfo/logWarn/logStage helpers —
-  // those still demand `ru: string` strictly.
-  private bridgeLegacyLogStage(
-    language: LengthLanguage,
-    message: { zh: string; en: string },
-  ): void {
-    const text = language === "zh" ? message.zh : message.en;
-    this.config.logger?.info(
-      `${this.localize(language, { zh: "阶段：", en: "Stage: ", ru: "Этап: " })}${text}`,
-    );
-  }
-
-  private bridgeLegacyLogWarn(
-    language: LengthLanguage,
-    message: { zh: string; en: string },
-  ): void {
-    const text = language === "zh" ? message.zh : message.en;
-    this.config.logger?.warn(text);
-  }
-
   private async tryGenerateStyleGuide(
     bookId: string,
     referenceText: string,
@@ -1485,8 +1458,8 @@ export class PipelineRunner {
           : [];
         return [...baseIssues, ...ledgerIssues];
       },
-      logWarn: (message) => this.bridgeLegacyLogWarn(pipelineLang, message),
-      logStage: (message) => this.bridgeLegacyLogStage(stageLanguage, message),
+      logWarn: (message) => this.logWarn(pipelineLang, message),
+      logStage: (message) => this.logStage(stageLanguage, message),
     });
     totalUsage = reviewResult.totalUsage;
     let finalContent = reviewResult.finalContent;
@@ -1664,7 +1637,7 @@ export class PipelineRunner {
       },
       reducedControlInput,
       language: pipelineLang,
-      logWarn: (message) => this.bridgeLegacyLogWarn(pipelineLang, message),
+      logWarn: (message) => this.logWarn(pipelineLang, message),
       logger: this.config.logger,
     });
     let chapterStatus: ChapterPipelineResult["status"] | null = truthValidation.chapterStatus;
@@ -1849,7 +1822,7 @@ export class PipelineRunner {
         oldHooks,
         originalValidation: validation,
         language: pipelineLang,
-        logWarn: (message) => this.bridgeLegacyLogWarn(pipelineLang, message),
+        logWarn: (message) => this.logWarn(pipelineLang, message),
         logger: this.config.logger,
       });
       if (recovery.kind !== "recovered") {
@@ -1987,7 +1960,7 @@ export class PipelineRunner {
         oldHooks,
         originalValidation: validation,
         language: pipelineLang,
-        logWarn: (message) => this.bridgeLegacyLogWarn(pipelineLang, message),
+        logWarn: (message) => this.logWarn(pipelineLang, message),
         logger: this.config.logger,
       });
       if (recovery.kind !== "recovered") {

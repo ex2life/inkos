@@ -93,8 +93,10 @@ export async function buildExportArtifact(
       const { title, html } = markdownToSimpleHtml(markdown);
       epubChapters.push({ title, content: html });
     }
+    const epubLang =
+      book.language === "en" ? "en" : book.language === "ru" ? "ru" : "zh-CN";
     const epubInstance = new EPub(
-      { title: book.title, lang: book.language === "en" ? "en" : "zh-CN" },
+      { title: book.title, lang: epubLang },
       epubChapters,
     );
     return {

@@ -250,4 +250,47 @@ describe("validateChapterTruthPersistence", () => {
       }),
     ]);
   });
+
+  it("emits a substantive Russian warning when ru-language validation reports warnings", async () => {
+    const validator = {
+      validate: vi.fn().mockResolvedValue(createValidationResult({
+        passed: true,
+        warnings: [{
+          category: "current-state",
+          description: "Жетон в кармане, но state говорит обратное.",
+        }],
+      })),
+    };
+    const writer = { settleChapterState: vi.fn() };
+    const logWarn = vi.fn();
+
+    await validateChapterTruthPersistence({
+      writer,
+      validator,
+      book: BOOK,
+      bookDir: "/tmp/book",
+      chapterNumber: 7,
+      title: "Глава седьмая",
+      content: "Жетон в кармане куртки.",
+      persistenceOutput: createWriterOutput(),
+      auditResult: createAuditResult(),
+      previousTruth: {
+        oldState: "old",
+        oldHooks: "old",
+        oldLedger: "old",
+      },
+      language: "ru",
+      logWarn,
+      logger: { warn: vi.fn() },
+    });
+
+    expect(logWarn).toHaveBeenCalledWith(expect.objectContaining({
+      ru: expect.stringContaining("Проверка состояния"),
+    }));
+    const ruMessage = logWarn.mock.calls[0]?.[0]?.ru as string | undefined;
+    expect(ruMessage).toContain("главе 7");
+    expect(ruMessage).toContain("1");
+    // Russian must NOT mirror English text
+    expect(ruMessage).not.toEqual(logWarn.mock.calls[0]?.[0]?.en);
+  });
 });

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { fetchJson, useApi, postApi } from "../hooks/use-api";
 import type { Theme } from "../hooks/use-theme";
 import type { TFunction } from "../hooks/use-i18n";
-import { useI18n } from "../hooks/use-i18n";
+import { useI18n, type Lang } from "../hooks/use-i18n";
 import { useColors } from "../hooks/use-colors";
 import { FileInput, BookCopy, Feather } from "lucide-react";
 
@@ -14,6 +14,36 @@ interface BookSummary {
 interface Nav { toDashboard: () => void }
 
 type Tab = "chapters" | "canon" | "fanfic";
+
+export interface FanficLanguageOption {
+  readonly value: Lang;
+  readonly label: string;
+}
+
+/**
+ * Source-language options for the fanfic importer. Labels are localised in
+ * the active Studio UI language so a Russian operator sees "Русский" first
+ * rather than "Russian"; a Chinese operator sees "俄文". The ru option is
+ * always present so Russian source material is selectable in any UI lang.
+ */
+export function fanficLanguageOptions(uiLang: Lang): ReadonlyArray<FanficLanguageOption> {
+  const labels: Record<Lang, Record<Lang, string>> = {
+    zh: { zh: "中文", en: "英文", ru: "俄文" },
+    en: { zh: "Chinese", en: "English", ru: "Russian" },
+    ru: { zh: "Китайский", en: "Английский", ru: "Русский" },
+  };
+  return [
+    { value: "zh", label: labels[uiLang].zh },
+    { value: "en", label: labels[uiLang].en },
+    { value: "ru", label: labels[uiLang].ru },
+  ];
+}
+
+export function coerceFanficLang(value: string): Lang {
+  if (value === "en") return "en";
+  if (value === "ru") return "ru";
+  return "zh";
+}
 
 export function ImportManager({ nav, theme, t }: { nav: Nav; theme: Theme; t: TFunction }) {
   const c = useColors(theme);
@@ -37,7 +67,7 @@ export function ImportManager({ nav, theme, t }: { nav: Nav; theme: Theme; t: TF
   const [ffText, setFfText] = useState("");
   const [ffMode, setFfMode] = useState("canon");
   const [ffGenre, setFfGenre] = useState("other");
-  const [ffLang, setFfLang] = useState(lang);
+  const [ffLang, setFfLang] = useState<Lang>(lang);
 
   const handleImportChapters = async () => {
     if (!chText.trim() || !chBookId) return;
@@ -188,10 +218,11 @@ export function ImportManager({ nav, theme, t }: { nav: Nav; theme: Theme; t: TF
                 <option value="urban">都市</option>
                 <option value="xianxia">仙侠</option>
               </select>
-              <select value={ffLang} onChange={(e) => setFfLang(e.target.value as "zh" | "en")}
+              <select value={ffLang} onChange={(e) => setFfLang(coerceFanficLang(e.target.value))}
                 className="px-3 py-2 rounded-lg bg-secondary/30 border border-border text-sm">
-                <option value="zh">中文</option>
-                <option value="en">English</option>
+                {fanficLanguageOptions(lang).map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
               </select>
             </div>
             <textarea value={ffText} onChange={(e) => setFfText(e.target.value)} rows={10}

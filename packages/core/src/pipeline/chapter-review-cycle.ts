@@ -100,8 +100,8 @@ export async function runChapterReviewCycle(params: {
   };
   /** Re-run deterministic post-write checks (chapter-ref, paragraph shape, etc.) on any content. */
   readonly runPostWriteChecks?: (content: string) => ReadonlyArray<AuditIssue>;
-  readonly logWarn: (message: { zh: string; en: string }) => void;
-  readonly logStage: (message: { zh: string; en: string }) => void;
+  readonly logWarn: (message: { zh: string; en: string; ru: string }) => void;
+  readonly logStage: (message: { zh: string; en: string; ru: string }) => void;
 }): Promise<ChapterReviewCycleResult> {
   let totalUsage = params.initialUsage;
   let normalizeApplied = false;
@@ -205,7 +205,7 @@ export async function runChapterReviewCycle(params: {
   // ---------------------------------------------------------------------------
   // Scoring loop: assess → revise → assess, max 3 iterations, pick best
   // ---------------------------------------------------------------------------
-  params.logStage({ zh: "审计草稿", en: "auditing draft" });
+  params.logStage({ zh: "审计草稿", en: "auditing draft", ru: "провожу аудит черновика" });
   const initial = await assess(finalContent);
 
   const snapshots: ReviewSnapshot[] = [{
@@ -223,6 +223,7 @@ export async function runChapterReviewCycle(params: {
       params.logStage({
         zh: `修复轮次 ${iteration + 1}/${MAX_REVIEW_ITERATIONS}（当前 ${currentAudit.score} 分）`,
         en: `repair iteration ${iteration + 1}/${MAX_REVIEW_ITERATIONS} (current score: ${currentAudit.score})`,
+        ru: `итерация правок ${iteration + 1}/${MAX_REVIEW_ITERATIONS} (текущий балл: ${currentAudit.score})`,
       });
 
       const reviser = params.createReviser();
@@ -241,6 +242,7 @@ export async function runChapterReviewCycle(params: {
         params.logWarn({
           zh: `修复轮次 ${iteration + 1} 未产出新内容，退出循环`,
           en: `repair iteration ${iteration + 1} produced no new content, exiting loop`,
+          ru: `итерация правок ${iteration + 1} не дала нового текста — выхожу из цикла`,
         });
         break;
       }
@@ -266,6 +268,7 @@ export async function runChapterReviewCycle(params: {
         params.logStage({
           zh: `修复后达到通过线（${nextAssessment.score} 分），退出循环`,
           en: `repair reached pass threshold (${nextAssessment.score}), exiting loop`,
+          ru: `после правок достигнут проходной балл (${nextAssessment.score}) — выхожу из цикла`,
         });
         finalContent = revisedContent;
         finalWordCount = revisedWordCount;
@@ -285,6 +288,7 @@ export async function runChapterReviewCycle(params: {
         params.logWarn({
           zh: `修复轮次 ${iteration + 1} 未净提升（${currentAudit.score} → ${nextAssessment.score}），退出循环`,
           en: `repair iteration ${iteration + 1} no net improvement (${currentAudit.score} → ${nextAssessment.score}), exiting loop`,
+          ru: `итерация правок ${iteration + 1} не дала чистого прироста (${currentAudit.score} → ${nextAssessment.score}) — выхожу из цикла`,
         });
         break;
       }
@@ -304,6 +308,7 @@ export async function runChapterReviewCycle(params: {
     params.logWarn({
       zh: `回退到最高分版本（${bestSnapshot.score} 分 vs 当前 ${currentAudit.score} 分）`,
       en: `rolling back to highest-scoring version (${bestSnapshot.score} vs current ${currentAudit.score})`,
+      ru: `откатываюсь к версии с лучшим баллом (${bestSnapshot.score} против текущих ${currentAudit.score})`,
     });
     finalContent = bestSnapshot.content;
     finalWordCount = bestSnapshot.wordCount;

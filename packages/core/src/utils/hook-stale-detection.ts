@@ -146,23 +146,36 @@ export function renderHookDiagnosticMarker(
 ): string {
   const tokens: string[] = [];
   if (diagnostics.stale) {
-    tokens.push(language === "en"
-      ? `stale (d=${diagnostics.distance}/half=${diagnostics.halfLife})`
-      : `过期 (距=${diagnostics.distance}/半衰=${diagnostics.halfLife})`);
+    if (language === "en") {
+      tokens.push(`stale (d=${diagnostics.distance}/half=${diagnostics.halfLife})`);
+    } else if (language === "ru") {
+      tokens.push(`устарело (d=${diagnostics.distance}/half=${diagnostics.halfLife})`);
+    } else {
+      tokens.push(`过期 (距=${diagnostics.distance}/半衰=${diagnostics.halfLife})`);
+    }
   }
   if (diagnostics.blocked) {
     const missing = diagnostics.missingUpstream.join(", ");
     // Hotfix 3: embed the blocked distance so reviewer can apply its 5/6-chapter
     // threshold without guessing. Token format is load-bearing — it's read by
     // the reviewer prompt verbatim.
-    const distanceToken = diagnostics.blockedDistance > 0
-      ? (language === "en"
-        ? ` (blocked ${diagnostics.blockedDistance} chapters)`
-        : ` (已阻 ${diagnostics.blockedDistance} 章)`)
-      : "";
-    tokens.push(language === "en"
-      ? `blocked on ${missing}${distanceToken}`
-      : `受阻于 ${missing}${distanceToken}`);
+    let distanceToken = "";
+    if (diagnostics.blockedDistance > 0) {
+      if (language === "en") {
+        distanceToken = ` (blocked ${diagnostics.blockedDistance} chapters)`;
+      } else if (language === "ru") {
+        distanceToken = ` (блокировка ${diagnostics.blockedDistance} глав)`;
+      } else {
+        distanceToken = ` (已阻 ${diagnostics.blockedDistance} 章)`;
+      }
+    }
+    if (language === "en") {
+      tokens.push(`blocked on ${missing}${distanceToken}`);
+    } else if (language === "ru") {
+      tokens.push(`заблокировано на ${missing}${distanceToken}`);
+    } else {
+      tokens.push(`受阻于 ${missing}${distanceToken}`);
+    }
   }
   return tokens.join("; ");
 }
