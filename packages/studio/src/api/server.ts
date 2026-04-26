@@ -37,6 +37,7 @@ import {
   buildExportArtifact,
   GLOBAL_ENV_PATH,
   type ResolvedModel,
+  setLLMErrorLanguage,
   type PipelineConfig,
   type ProjectConfig,
   type LogSink,
@@ -2678,6 +2679,9 @@ export async function startStudioServer(
   options?: { readonly staticDir?: string },
 ): Promise<void> {
   const config = await loadProjectConfig(root, { consumer: "studio", requireApiKey: false });
+  // Tell core LLM provider which language to use for connection-error messages
+  // so Russian operators see Russian on baseUrl/network failures.
+  setLLMErrorLanguage(config.language);
 
   const app = createStudioServer(config, root);
 

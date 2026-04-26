@@ -1,6 +1,6 @@
 import { readFile, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { createLLMClient, StateManager, createLogger, createStderrSink, createJsonLineSink, resolveEffectiveLLMConfig, loadLLMEnvLayers, GLOBAL_CONFIG_DIR, GLOBAL_ENV_PATH, type EffectiveLLMConfigResult, type LLMConfigCliOverrides, type ProjectConfig, type PipelineConfig, type LogSink } from "@actalk/inkos-core";
+import { createLLMClient, StateManager, createLogger, createStderrSink, createJsonLineSink, resolveEffectiveLLMConfig, loadLLMEnvLayers, setLLMErrorLanguage, GLOBAL_CONFIG_DIR, GLOBAL_ENV_PATH, type EffectiveLLMConfigResult, type LLMConfigCliOverrides, type ProjectConfig, type PipelineConfig, type LogSink } from "@actalk/inkos-core";
 import { formatSqliteMemorySupportWarning } from "./runtime-requirements.js";
 
 export { GLOBAL_CONFIG_DIR, GLOBAL_ENV_PATH };
@@ -36,7 +36,11 @@ export async function loadConfig(options?: {
   readonly projectRoot?: string;
   readonly cli?: LLMConfigCliOverrides;
 }): Promise<ProjectConfig> {
-  return (await loadConfigWithDiagnostics(options)).config;
+  const config = (await loadConfigWithDiagnostics(options)).config;
+  // Tell core LLM provider which language to use for connection-error messages
+  // so Russian operators don't see Chinese on baseUrl/network failures.
+  setLLMErrorLanguage(config.language);
+  return config;
 }
 
 export async function loadConfigWithDiagnostics(options?: {

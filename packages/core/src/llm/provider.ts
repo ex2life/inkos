@@ -314,14 +314,29 @@ export function __resetFixedTemperatureWarnings(): void {
 
 // === Error Wrapping ===
 
+type LLMErrorLanguage = "zh" | "en" | "ru";
+
+// Module-level operator language for LLM error messages. CLI / Studio call
+// setLLMErrorLanguage() at startup so that connection / status-code errors
+// surface in the operator's language. Defaults to zh for backward compat.
+let _llmErrorLanguage: LLMErrorLanguage = "zh";
+
+export function setLLMErrorLanguage(lang: string | undefined | null): void {
+  if (lang === "en" || lang === "ru" || lang === "zh") {
+    _llmErrorLanguage = lang;
+  } else {
+    _llmErrorLanguage = "zh";
+  }
+}
+
 function wrapLLMError(error: unknown, context?: { readonly baseUrl?: string; readonly model?: string }): Error {
   const msg = String(error);
+  const lang: LLMErrorLanguage = _llmErrorLanguage;
   const ctxLine = context
     ? `\n  (baseUrl: ${context.baseUrl}, model: ${context.model})`
     : "";
 
   if (msg.includes("400")) {
-    // 抽上游 error body 的 message / reason / code（和下方 5xx 一致），让真实错因浮到用户面前
     let detail = "";
     if (error && typeof error === "object") {
       const err = error as { error?: unknown; body?: unknown; message?: string };
@@ -332,6 +347,24 @@ function wrapLLMError(error: unknown, context?: { readonly baseUrl?: string; rea
         else if (b.reason) detail = b.reason;
       }
     }
+    if (lang === "en") {
+      return new Error(
+        `API returned 400 (bad request).${detail ? ` Upstream detail: ${detail}.\n` : "\n"}` +
+        `Common causes:\n` +
+        `  1. temperature / max_tokens out of range for the model (e.g. Moonshot kimi-k2.X forces temperature=1)\n` +
+        `  2. model name incorrect or not deployed\n` +
+        `  3. message format unsupported (some services do not accept system / developer role)${ctxLine}`,
+      );
+    }
+    if (lang === "ru") {
+      return new Error(
+        `API вернул 400 (неверный запрос).${detail ? ` Подробности от провайдера: ${detail}.\n` : "\n"}` +
+        `Возможные причины:\n` +
+        `  1. temperature / max_tokens вне допустимого диапазона модели (например, Moonshot kimi-k2.X жёстко требует temperature=1)\n` +
+        `  2. имя модели указано неверно или модель не развёрнута\n` +
+        `  3. формат сообщений не поддерживается (некоторые провайдеры не принимают role: system или role: developer)${ctxLine}`,
+      );
+    }
     return new Error(
       `API 返回 400（请求参数错误）。${detail ? `上游详情：${detail}。\n` : ""}` +
       `常见原因：\n` +
@@ -341,6 +374,24 @@ function wrapLLMError(error: unknown, context?: { readonly baseUrl?: string; rea
     );
   }
   if (msg.includes("403")) {
+    if (lang === "en") {
+      return new Error(
+        `API returned 403 (forbidden). Possible causes:\n` +
+        `  1. API key invalid or expired\n` +
+        `  2. content moderation rejected the request (common with free / community APIs)\n` +
+        `  3. insufficient account balance\n` +
+        `  Tip: run "inkos doctor" to test connectivity, or switch to a less restrictive provider${ctxLine}`,
+      );
+    }
+    if (lang === "ru") {
+      return new Error(
+        `API вернул 403 (запрос отклонён). Возможные причины:\n` +
+        `  1. API-ключ недействителен или просрочен\n` +
+        `  2. модерация контента у провайдера отклонила запрос (типично для бесплатных / общественных API)\n` +
+        `  3. на счёте недостаточно средств\n` +
+        `  Совет: запусти «inkos doctor» для проверки соединения или смени провайдера на менее строгого${ctxLine}`,
+      );
+    }
     return new Error(
       `API 返回 403 (请求被拒绝)。可能原因：\n` +
       `  1. API Key 无效或过期\n` +
@@ -350,16 +401,42 @@ function wrapLLMError(error: unknown, context?: { readonly baseUrl?: string; rea
     );
   }
   if (msg.includes("401")) {
-    return new Error(
-      `API 返回 401 (未授权)。请检查 .env 中的 INKOS_LLM_API_KEY 是否正确。${ctxLine}`,
-    );
+    if (lang === "en") {
+      return new Error(`API returned 401 (unauthorized). Check INKOS_LLM_API_KEY in your .env.${ctxLine}`);
+    }
+    if (lang === "ru") {
+      return new Error(`API вернул 401 (не авторизован). Проверь INKOS_LLM_API_KEY в .env.${ctxLine}`);
+    }
+    return new Error(`API 返回 401 (未授权)。请检查 .env 中的 INKOS_LLM_API_KEY 是否正确。${ctxLine}`);
   }
   if (msg.includes("429")) {
-    return new Error(
-      `API 返回 429 (请求过多)。请稍后重试，或检查 API 配额。${ctxLine}`,
-    );
+    if (lang === "en") {
+      return new Error(`API returned 429 (too many requests). Retry later or check your API quota.${ctxLine}`);
+    }
+    if (lang === "ru") {
+      return new Error(`API вернул 429 (слишком много запросов). Повтори позже или проверь квоту API.${ctxLine}`);
+    }
+    return new Error(`API 返回 429 (请求过多)。请稍后重试，或检查 API 配额。${ctxLine}`);
   }
   if (msg.includes("Connection error") || msg.includes("ECONNREFUSED") || msg.includes("ENOTFOUND") || msg.includes("fetch failed")) {
+    if (lang === "en") {
+      return new Error(
+        `Cannot reach the API service. Possible causes:\n` +
+        `  1. baseUrl is wrong (current: ${context?.baseUrl ?? "unknown"})\n` +
+        `  2. network unreachable or blocked by firewall\n` +
+        `  3. API service is temporarily unavailable\n` +
+        `  Tip: confirm INKOS_LLM_BASE_URL includes the full path (e.g. /v1)`,
+      );
+    }
+    if (lang === "ru") {
+      return new Error(
+        `Не удаётся подключиться к API. Возможные причины:\n` +
+        `  1. baseUrl указан неверно (текущий: ${context?.baseUrl ?? "неизвестен"})\n` +
+        `  2. сеть недоступна или заблокирована файрволом\n` +
+        `  3. сервис API временно недоступен\n` +
+        `  Совет: проверь, что INKOS_LLM_BASE_URL содержит полный путь (например, /v1)`,
+      );
+    }
     return new Error(
       `无法连接到 API 服务。可能原因：\n` +
       `  1. baseUrl 地址不正确（当前：${context?.baseUrl ?? "未知"}）\n` +
@@ -368,8 +445,6 @@ function wrapLLMError(error: unknown, context?: { readonly baseUrl?: string; rea
       `  建议：检查 INKOS_LLM_BASE_URL 是否包含完整路径（如 /v1）`,
     );
   }
-  // R4 Bug 2: 5xx "status code (no body)" — 尝试从 OpenAI SDK APIError 里抽 body 给用户看具体原因
-  // （如 PPIO 的 {"code":500,"reason":"MODEL_NOT_AVAILABLE","message":"model not available"}）
   if (msg.includes("status code") && msg.includes("no body")) {
     let detail = "";
     if (error && typeof error === "object") {
@@ -380,6 +455,24 @@ function wrapLLMError(error: unknown, context?: { readonly baseUrl?: string; rea
         if (b.reason) detail = `${b.reason}${b.message ? `: ${b.message}` : ""}`;
         else if (b.message) detail = b.message;
       }
+    }
+    if (lang === "en") {
+      return new Error(
+        `API returned 5xx (upstream service error).${detail ? ` Upstream detail: ${detail}.` : ""}\n` +
+        `Possible causes:\n` +
+        `  1. model is listed in /models but inference is not deployed (e.g. PPIO returns MODEL_NOT_AVAILABLE)\n` +
+        `  2. transient server-side outage — retry later\n` +
+        `  3. current API key has no permission for this model${ctxLine}`,
+      );
+    }
+    if (lang === "ru") {
+      return new Error(
+        `API вернул 5xx (сбой на стороне провайдера).${detail ? ` Подробности от провайдера: ${detail}.` : ""}\n` +
+        `Возможные причины:\n` +
+        `  1. модель числится в /models, но inference не развёрнут (например, PPIO возвращает MODEL_NOT_AVAILABLE)\n` +
+        `  2. временный сбой на стороне сервиса — повтори позже\n` +
+        `  3. у текущего API-ключа нет прав на эту модель${ctxLine}`,
+      );
     }
     return new Error(
       `API 返回 5xx（上游服务异常）。${detail ? `上游详情：${detail}。` : ""}\n` +

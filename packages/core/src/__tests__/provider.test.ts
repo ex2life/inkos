@@ -205,6 +205,38 @@ describe("chatCompletion via pi-ai", () => {
     expect(error.message).toContain("无法连接到 API 服务");
   });
 
+  it("emits Russian connection-error message after setLLMErrorLanguage('ru')", async () => {
+    const { setLLMErrorLanguage } = await import("../llm/provider.js");
+    setLLMErrorLanguage("ru");
+    try {
+      mockStreamSimple.mockReturnValue(makeErrorStream("fetch failed: ECONNREFUSED"));
+      const client = makeClient();
+      const error = await captureError(
+        chatCompletion(client, "test-model", [{ role: "user", content: "ping" }]),
+      );
+      expect(error.message).toContain("Не удаётся подключиться к API");
+      expect(error.message).not.toContain("无法连接");
+    } finally {
+      setLLMErrorLanguage("zh");
+    }
+  });
+
+  it("emits English connection-error message after setLLMErrorLanguage('en')", async () => {
+    const { setLLMErrorLanguage } = await import("../llm/provider.js");
+    setLLMErrorLanguage("en");
+    try {
+      mockStreamSimple.mockReturnValue(makeErrorStream("fetch failed: ECONNREFUSED"));
+      const client = makeClient();
+      const error = await captureError(
+        chatCompletion(client, "test-model", [{ role: "user", content: "ping" }]),
+      );
+      expect(error.message).toContain("Cannot reach the API service");
+      expect(error.message).not.toContain("无法连接");
+    } finally {
+      setLLMErrorLanguage("zh");
+    }
+  });
+
   it("passes temperature and maxTokens to streamSimple", async () => {
     mockStreamSimple.mockReturnValue(makeTextStream("ok"));
 
