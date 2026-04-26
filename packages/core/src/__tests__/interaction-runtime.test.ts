@@ -630,4 +630,50 @@ describe("interaction runtime", () => {
     expect(result.responseText).toContain("repairing");
     expect(result.responseText).toContain("harbor");
   });
+
+  // Russian-localization round 4, bug 1 regression: a request with
+  // language="ru" used to fall through to the Chinese branch because the
+  // resolver collapsed every non-en value to "zh", and the localize() helper
+  // only accepted {zh, en}. Walking the path through write_next exercises
+  // both the resolver and several user-facing strings emitted along the way.
+  it("emits Russian responses for a write_next request with language=\"ru\"", async () => {
+    const writeNextChapter = vi.fn(async () => ({
+      chapterNumber: 4,
+      title: "Портовая бухгалтерия",
+      wordCount: 3000,
+      revised: false,
+      status: "ready-for-review" as const,
+    }));
+
+    const result = await runInteractionRequest({
+      session: InteractionSessionSchema.parse({
+        sessionId: "session-ru-write",
+        projectRoot: "/tmp/project",
+        activeBookId: "harbor",
+        automationMode: "auto",
+        messages: [],
+        events: [],
+      }),
+      request: {
+        intent: "write_next",
+        bookId: "harbor",
+        language: "ru",
+      },
+      tools: makeTools({ writeNextChapter }),
+    });
+
+    expect(writeNextChapter).toHaveBeenCalledWith("harbor");
+    expect(result.session.currentExecution?.status).toBe("completed");
+    expect(result.session.currentExecution?.stageLabel).toBe("завершено");
+    // The default response (no metadata.responseText supplied above) is
+    // the substantive Russian translation, not a Chinese fallback or an
+    // English one.
+    expect(result.responseText).toContain("дописана следующая глава");
+    expect(result.responseText).not.toMatch(/[一-鿿]/);
+    expect(result.responseText).not.toContain("Completed write_next");
+    // task.started / task.completed event details should also be Russian.
+    const startedDetail = result.session.events.find((event) => event.kind === "task.started")?.detail ?? "";
+    expect(startedDetail).toContain("Начато выполнение");
+    expect(startedDetail).not.toMatch(/[一-鿿]/);
+  });
 });

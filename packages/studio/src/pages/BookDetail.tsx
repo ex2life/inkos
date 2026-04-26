@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Theme } from "../hooks/use-theme";
 import type { TFunction } from "../hooks/use-i18n";
 import type { SSEMessage } from "../hooks/use-sse";
+import { useI18n } from "../hooks/use-i18n";
 import { useColors } from "../hooks/use-colors";
 import { deriveBookActivity, shouldRefetchBookView } from "../hooks/use-book-activity";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -13,7 +14,6 @@ import {
   CheckCheck,
   BarChart2,
   Download,
-  Search,
   Wand2,
   Eye,
   Database,
@@ -52,6 +52,7 @@ interface BookData {
 type ReviseMode = "spot-fix" | "polish" | "rewrite" | "rework" | "anti-detect";
 type ExportFormat = "txt" | "md" | "epub";
 type BookStatus = "active" | "paused" | "outlining" | "completed" | "dropped";
+export type BookLang = "zh" | "en" | "ru";
 
 interface Nav {
   toDashboard: () => void;
@@ -80,6 +81,174 @@ const STATUS_CONFIG: Record<string, { color: string; icon: React.ReactNode }> = 
   imported: { color: "text-blue-500 bg-blue-500/10", icon: <Download size={12} /> },
 };
 
+/**
+ * Coerce an arbitrary book.language string into our tri-language
+ * union, defaulting to Chinese for unknown / missing values to
+ * preserve historical behaviour.
+ */
+export function coerceBookLanguage(raw: string | undefined | null): BookLang {
+  if (raw === "en" || raw === "ru" || raw === "zh") return raw;
+  return "zh";
+}
+
+/**
+ * Localised "optional brief" prompts shown via window.prompt for
+ * rewrite / revise / resync flows. The text is targeted at the
+ * BOOK's language (i.e. the manuscript's reader), not the Studio
+ * UI language — operators write briefs about the book in the book's
+ * voice, so a Russian book gets a Russian prompt even when an English
+ * operator is at the keyboard.
+ */
+export function localizedBriefPrompt(
+  language: string | undefined,
+  kind: "rewrite" | "revise" | "sync",
+): string {
+  const lang = coerceBookLanguage(language);
+  if (lang === "ru") {
+    if (kind === "rewrite") {
+      return "Необязательное задание для этого перезапуска. Оставьте пустым, чтобы сохранить текущий focus.";
+    }
+    if (kind === "revise") {
+      return "Необязательное задание для этой правки. Оставьте пустым, чтобы сохранить текущий focus.";
+    }
+    return "Необязательное задание для интерпретации отредактированной главы. Оставьте пустым, чтобы синхронизировать строго по тексту.";
+  }
+  if (lang === "en") {
+    if (kind === "rewrite") {
+      return "Optional rewrite brief for this run only. Leave blank to use existing focus.";
+    }
+    if (kind === "revise") {
+      return "Optional revise brief for this run only. Leave blank to use existing focus.";
+    }
+    return "Optional sync brief for interpreting the edited chapter body. Leave blank to sync directly from the text.";
+  }
+  // default: zh
+  if (kind === "rewrite") {
+    return "可选：输入这次重写要遵循的补充想法。留空则沿用现有 focus。";
+  }
+  if (kind === "revise") {
+    return "可选：输入这次修订要遵循的补充想法。留空则沿用现有 focus。";
+  }
+  return "可选：输入这次同步时要遵循的补充说明。留空则直接按正文同步。";
+}
+
+/**
+ * Localised tooltip text on the per-chapter "sync from edited body"
+ * button, in the book's language.
+ */
+export function localizedSyncTooltip(language: string | undefined): string {
+  const lang = coerceBookLanguage(language);
+  if (lang === "ru") return "Синхронизировать truth/state по отредактированной главе";
+  if (lang === "en") return "Sync truth/state from edited chapter";
+  return "根据已编辑章节同步 truth/state";
+}
+
+/**
+ * Compact language badge shown next to the book title. Returns null
+ * for the default Chinese case (no badge), matching legacy behaviour.
+ */
+export function languageBadgeText(language: string | undefined): string | null {
+  const lang = coerceBookLanguage(language);
+  if (lang === "en") return "EN";
+  if (lang === "ru") return "RU";
+  return null;
+}
+
+/**
+ * Localised label for the language picker in the BookDetail settings
+ * form. Labels itself in the active Studio UI language so a Russian
+ * operator sees a Russian "Язык" header and Russian option labels.
+ */
+export function bookLanguagePickerLabels(uiLang: string): {
+  readonly heading: string;
+  readonly zh: string;
+  readonly en: string;
+  readonly ru: string;
+} {
+  if (uiLang === "ru") {
+    return {
+      heading: "Язык книги",
+      zh: "Китайский",
+      en: "Английский",
+      ru: "Русский",
+    };
+  }
+  if (uiLang === "en") {
+    return {
+      heading: "Book Language",
+      zh: "Chinese",
+      en: "English",
+      ru: "Russian",
+    };
+  }
+  return {
+    heading: "书籍语言",
+    zh: "中文",
+    en: "英文",
+    ru: "俄文",
+  };
+}
+
+/**
+ * Localised toolbar / dialog strings for BookDetail. Targets the
+ * Studio UI language (operator-facing chrome), not the book's
+ * language.
+ */
+function operatorStrings(uiLang: string) {
+  if (uiLang === "ru") {
+    return {
+      auditPassed: "Проверка пройдена",
+      auditFailed: (n: number) => `Проверка не пройдена: ${n} замечаний`,
+      auditError: "Ошибка проверки",
+      approveError: "Не удалось утвердить",
+      rejectError: "Не удалось отклонить",
+      rewriteError: "Не удалось переписать",
+      reviseError: "Не удалось отредактировать",
+      syncError: "Не удалось синхронизировать",
+      exportError: "Не удалось экспортировать",
+      writeError: "Не удалось запустить",
+      deleteError: "Не удалось удалить",
+      saveError: "Не удалось сохранить",
+      reviseTitle: "Редактировать через ИИ",
+      approveAllFailed: (a: number, b: number) => `${a}/${b} утверждений не прошли`,
+    };
+  }
+  if (uiLang === "en") {
+    return {
+      auditPassed: "Audit passed",
+      auditFailed: (n: number) => `Audit failed: ${n} issues`,
+      auditError: "Audit failed",
+      approveError: "Approve failed",
+      rejectError: "Reject failed",
+      rewriteError: "Rewrite failed",
+      reviseError: "Revision failed",
+      syncError: "Sync failed",
+      exportError: "Export failed",
+      writeError: "Failed",
+      deleteError: "Delete failed",
+      saveError: "Save failed",
+      reviseTitle: "Revise with AI",
+      approveAllFailed: (a: number, b: number) => `${a}/${b} approve(s) failed`,
+    };
+  }
+  return {
+    auditPassed: "审计通过",
+    auditFailed: (n: number) => `审计未通过：${n} 个问题`,
+    auditError: "审计失败",
+    approveError: "通过失败",
+    rejectError: "驳回失败",
+    rewriteError: "重写失败",
+    reviseError: "修订失败",
+    syncError: "同步失败",
+    exportError: "导出失败",
+    writeError: "失败",
+    deleteError: "删除失败",
+    saveError: "保存失败",
+    reviseTitle: "AI 修订",
+    approveAllFailed: (a: number, b: number) => `${a}/${b} 通过失败`,
+  };
+}
+
 export function BookDetail({
   bookId,
   nav,
@@ -94,6 +263,11 @@ export function BookDetail({
   sse: { messages: ReadonlyArray<SSEMessage> };
 }) {
   const c = useColors(theme);
+  const { lang: studioLang } = useI18n();
+  const uiLang: string = studioLang;
+  const ops = operatorStrings(uiLang);
+  const langPickerLabels = bookLanguagePickerLabels(uiLang);
+
   const { data, loading, error, refetch } = useApi<BookData>(`/books/${bookId}`);
   const [writeRequestPending, setWriteRequestPending] = useState(false);
   const [draftRequestPending, setDraftRequestPending] = useState(false);
@@ -106,6 +280,7 @@ export function BookDetail({
   const [settingsWordCount, setSettingsWordCount] = useState<number | null>(null);
   const [settingsTargetChapters, setSettingsTargetChapters] = useState<number | null>(null);
   const [settingsStatus, setSettingsStatus] = useState<BookStatus | null>(null);
+  const [settingsLanguage, setSettingsLanguage] = useState<BookLang | null>(null);
   const [exportFormat, setExportFormat] = useState<ExportFormat>("txt");
   const [exportApprovedOnly, setExportApprovedOnly] = useState(false);
   const activity = useMemo(() => deriveBookActivity(sse.messages, bookId), [bookId, sse.messages]);
@@ -143,7 +318,7 @@ export function BookDetail({
       await postApi(`/books/${bookId}/write-next`);
     } catch (e) {
       setWriteRequestPending(false);
-      alert(e instanceof Error ? e.message : "Failed");
+      alert(e instanceof Error ? e.message : ops.writeError);
     }
   };
 
@@ -153,7 +328,7 @@ export function BookDetail({
       await postApi(`/books/${bookId}/draft`);
     } catch (e) {
       setDraftRequestPending(false);
-      alert(e instanceof Error ? e.message : "Failed");
+      alert(e instanceof Error ? e.message : ops.writeError);
     }
   };
 
@@ -168,19 +343,14 @@ export function BookDetail({
       }
       nav.toDashboard();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Delete failed");
+      alert(e instanceof Error ? e.message : ops.deleteError);
     } finally {
       setDeleting(false);
     }
   };
 
   const handleRewrite = async (chapterNum: number) => {
-    const brief = window.prompt(
-      data?.book.language === "en"
-        ? "Optional rewrite brief for this run only. Leave blank to use existing focus."
-        : "可选：输入这次重写要遵循的补充想法。留空则沿用现有 focus。",
-      "",
-    );
+    const brief = window.prompt(localizedBriefPrompt(data?.book.language, "rewrite"), "");
     if (brief === null) return;
     setRewritingChapters((prev) => [...prev, chapterNum]);
     try {
@@ -191,19 +361,14 @@ export function BookDetail({
       });
       refetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Rewrite failed");
+      alert(e instanceof Error ? e.message : ops.rewriteError);
     } finally {
       setRewritingChapters((prev) => prev.filter((n) => n !== chapterNum));
     }
   };
 
   const handleRevise = async (chapterNum: number, mode: ReviseMode) => {
-    const brief = window.prompt(
-      data?.book.language === "en"
-        ? "Optional revise brief for this run only. Leave blank to use existing focus."
-        : "可选：输入这次修订要遵循的补充想法。留空则沿用现有 focus。",
-      "",
-    );
+    const brief = window.prompt(localizedBriefPrompt(data?.book.language, "revise"), "");
     if (brief === null) return;
     setRevisingChapters((prev) => [...prev, chapterNum]);
     try {
@@ -214,19 +379,14 @@ export function BookDetail({
       });
       refetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Revision failed");
+      alert(e instanceof Error ? e.message : ops.reviseError);
     } finally {
       setRevisingChapters((prev) => prev.filter((n) => n !== chapterNum));
     }
   };
 
   const handleSync = async (chapterNum: number) => {
-    const brief = window.prompt(
-      data?.book.language === "en"
-        ? "Optional sync brief for interpreting the edited chapter body. Leave blank to sync directly from the text."
-        : "可选：输入这次同步时要遵循的补充说明。留空则直接按正文同步。",
-      "",
-    );
+    const brief = window.prompt(localizedBriefPrompt(data?.book.language, "sync"), "");
     if (brief === null) return;
     setSyncingChapters((prev) => [...prev, chapterNum]);
     try {
@@ -237,7 +397,7 @@ export function BookDetail({
       });
       refetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Sync failed");
+      alert(e instanceof Error ? e.message : ops.syncError);
     } finally {
       setSyncingChapters((prev) => prev.filter((n) => n !== chapterNum));
     }
@@ -251,6 +411,7 @@ export function BookDetail({
       if (settingsWordCount !== null) body.chapterWordCount = settingsWordCount;
       if (settingsTargetChapters !== null) body.targetChapters = settingsTargetChapters;
       if (settingsStatus !== null) body.status = settingsStatus;
+      if (settingsLanguage !== null) body.language = settingsLanguage;
       await fetchJson(`/books/${bookId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -258,7 +419,7 @@ export function BookDetail({
       });
       refetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Save failed");
+      alert(e instanceof Error ? e.message : ops.saveError);
     } finally {
       setSavingSettings(false);
     }
@@ -276,7 +437,7 @@ export function BookDetail({
       }
     }
     if (failed > 0) {
-      alert(`${failed}/${reviewable.length} approve(s) failed`);
+      alert(ops.approveAllFailed(failed, reviewable.length));
     }
     refetch();
   };
@@ -298,8 +459,12 @@ export function BookDetail({
   const currentWordCount = settingsWordCount ?? book.chapterWordCount;
   const currentTargetChapters = settingsTargetChapters ?? book.targetChapters ?? 0;
   const currentStatus = settingsStatus ?? (book.status as BookStatus);
+  const currentLanguage: BookLang = settingsLanguage ?? coerceBookLanguage(book.language);
+  const badge = languageBadgeText(book.language);
 
   const exportHref = `/api/v1/books/${bookId}/export?format=${exportFormat}${exportApprovedOnly ? "&approvedOnly=true" : ""}`;
+  // exportHref is preserved for downstream consumers / debugging.
+  void exportHref;
 
   return (
     <div className="space-y-8 fade-in">
@@ -321,8 +486,8 @@ export function BookDetail({
         <div className="space-y-2">
           <div className="flex items-center gap-3">
             <h1 className="text-4xl font-serif font-medium">{book.title}</h1>
-            {book.language === "en" && (
-              <span className="px-1.5 py-0.5 rounded border border-primary/20 text-primary text-[10px] font-bold">EN</span>
+            {badge && (
+              <span className="px-1.5 py-0.5 rounded border border-primary/20 text-primary text-[10px] font-bold">{badge}</span>
             )}
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground font-medium">
@@ -446,7 +611,7 @@ export function BookDetail({
                   });
                   alert(`${t("common.exportSuccess")}\n${data.path}\n(${data.chapters} ${t("dash.chapters")})`);
                 } catch (e) {
-                  alert(e instanceof Error ? e.message : "Export failed");
+                  alert(e instanceof Error ? e.message : ops.exportError);
                 }
               }}
               className="flex items-center gap-2 px-4 py-2 text-xs font-bold bg-secondary/50 text-muted-foreground rounded-lg hover:text-foreground hover:bg-secondary transition-all border border-border/50"
@@ -491,6 +656,18 @@ export function BookDetail({
               <option value="outlining">{t("book.statusOutlining")}</option>
               <option value="completed">{t("book.statusCompleted")}</option>
               <option value="dropped">{t("book.statusDropped")}</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{langPickerLabels.heading}</label>
+            <select
+              value={currentLanguage}
+              onChange={(e) => setSettingsLanguage(coerceBookLanguage(e.target.value))}
+              className="px-3 py-2 text-sm rounded-lg border border-border/50 bg-secondary/30 outline-none focus:border-primary/50"
+            >
+              <option value="zh">{langPickerLabels.zh}</option>
+              <option value="en">{langPickerLabels.en}</option>
+              <option value="ru">{langPickerLabels.ru}</option>
             </select>
           </div>
           <button
@@ -545,7 +722,7 @@ export function BookDetail({
                           <button
                             onClick={async () => {
                               try { await postApi(`/books/${bookId}/chapters/${ch.number}/approve`); refetch(); }
-                              catch (e) { alert(e instanceof Error ? e.message : "Approve failed"); }
+                              catch (e) { alert(e instanceof Error ? e.message : ops.approveError); }
                             }}
                             className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all shadow-sm"
                             title={t("book.approve")}
@@ -555,7 +732,7 @@ export function BookDetail({
                           <button
                             onClick={async () => {
                               try { await postApi(`/books/${bookId}/chapters/${ch.number}/reject`); refetch(); }
-                              catch (e) { alert(e instanceof Error ? e.message : "Reject failed"); }
+                              catch (e) { alert(e instanceof Error ? e.message : ops.rejectError); }
                             }}
                             className="p-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive hover:text-white transition-all shadow-sm"
                             title={t("book.reject")}
@@ -568,10 +745,10 @@ export function BookDetail({
                         onClick={async () => {
                           try {
                             const auditResult = await fetchJson<{ passed?: boolean; issues?: unknown[] }>(`/books/${bookId}/audit/${ch.number}`, { method: "POST" });
-                            alert(auditResult.passed ? "Audit passed" : `Audit failed: ${auditResult.issues?.length ?? 0} issues`);
+                            alert(auditResult.passed ? ops.auditPassed : ops.auditFailed(auditResult.issues?.length ?? 0));
                             refetch();
                           } catch (e) {
-                            alert(e instanceof Error ? e.message : "Audit failed");
+                            alert(e instanceof Error ? e.message : ops.auditError);
                           }
                         }}
                         className="p-2 rounded-lg bg-secondary text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all shadow-sm"
@@ -593,7 +770,7 @@ export function BookDetail({
                         onClick={() => handleSync(ch.number)}
                         disabled={syncingChapters.includes(ch.number) || ch.number !== latestPersistedChapter}
                         className="p-2 rounded-lg bg-secondary text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all shadow-sm disabled:opacity-50"
-                        title={data?.book.language === "en" ? "Sync truth/state from edited chapter" : "根据已编辑章节同步 truth/state"}
+                        title={localizedSyncTooltip(data?.book.language)}
                       >
                         {syncingChapters.includes(ch.number)
                           ? <div className="w-3.5 h-3.5 border-2 border-muted-foreground/20 border-t-muted-foreground rounded-full animate-spin" />
@@ -607,7 +784,7 @@ export function BookDetail({
                           if (mode) handleRevise(ch.number, mode);
                         }}
                         className="px-2 py-1.5 text-[11px] font-bold rounded-lg bg-secondary text-muted-foreground border border-border/50 outline-none hover:text-primary hover:bg-primary/10 transition-all disabled:opacity-50 cursor-pointer"
-                        title="Revise with AI"
+                        title={ops.reviseTitle}
                       >
                         <option value="" disabled>{revisingChapters.includes(ch.number) ? t("common.loading") : t("book.curate")}</option>
                         <option value="spot-fix">{t("book.spotFix")}</option>

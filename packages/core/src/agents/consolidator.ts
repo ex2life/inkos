@@ -8,6 +8,19 @@ import {
 } from "../utils/story-markdown.js";
 import type { StoredHook } from "../state/memory-db.js";
 
+/**
+ * Last-resort language guess used only when the caller cannot supply
+ * `BookConfig.language`. Detects CJK (zh) and Cyrillic (ru) explicitly so a
+ * Russian ledger does not silently degrade to English. The previous version
+ * recognised only CJK and rewrote Russian ledgers in English headers — the
+ * data-corruption bug fixed in the round-4 localization sweep.
+ */
+function detectLedgerLanguage(raw: string): "zh" | "en" | "ru" {
+  if (/[一-鿿]/.test(raw)) return "zh";
+  if (/[Ѐ-ӿ]/.test(raw)) return "ru";
+  return "en";
+}
+
 export interface ConsolidationResult {
   readonly volumeSummaries: string;
   readonly archivedVolumes: number;
@@ -35,8 +48,18 @@ export class ConsolidatorAgent extends BaseAgent {
    *   determine volume boundaries
    * - For each completed volume, LLM compresses chapter summaries into a narrative paragraph
    * - Archives detailed summaries, keeps only recent volume's per-chapter rows
+   *
+   * `bookLanguage`, when supplied, is the authoritative resolved language for
+   * this book (BookConfig.language ?? GenreProfile.language). It's passed
+   * through to the hook-ledger rerender so a Russian book stays Russian even
+   * when the ledger only contains ASCII identifiers in its data rows.
+   * Without it the function falls back to a content heuristic, which is the
+   * bug we previously fixed for Russian — see `rerunAdvancedCountPromotion`.
    */
-  async consolidate(bookDir: string): Promise<ConsolidationResult> {
+  async consolidate(
+    bookDir: string,
+    bookLanguage?: "zh" | "en" | "ru",
+  ): Promise<ConsolidationResult> {
     const storyDir = join(bookDir, "story");
     const summariesPath = join(storyDir, "chapter_summaries.md");
     const volumeSummariesPath = join(storyDir, "volume_summaries.md");
@@ -50,7 +73,7 @@ export class ConsolidatorAgent extends BaseAgent {
     // summary consolidation so a new book (no completed volumes yet) still
     // flips the `promoted` flag whenever a seed's advanced_count crosses the
     // threshold.
-    const promotedHookCount = await this.rerunAdvancedCountPromotion(storyDir);
+    const promotedHookCount = await this.rerunAdvancedCountPromotion(storyDir, bookLanguage);
 
     if (!summariesRaw || !outlineRaw) {
       return { volumeSummaries: "", archivedVolumes: 0, retainedChapters: 0, promotedHookCount };
@@ -157,7 +180,10 @@ export class ConsolidatorAgent extends BaseAgent {
    * Returns the number of hooks that flipped from promoted=false (or
    * undefined) to promoted=true this run.
    */
-  private async rerunAdvancedCountPromotion(storyDir: string): Promise<number> {
+  private async rerunAdvancedCountPromotion(
+    storyDir: string,
+    bookLanguage?: "zh" | "en" | "ru",
+  ): Promise<number> {
     const ledgerPath = join(storyDir, "pending_hooks.md");
     const raw = await readFile(ledgerPath, "utf-8").catch(() => "");
     if (!raw.trim()) return 0;
@@ -165,7 +191,13 @@ export class ConsolidatorAgent extends BaseAgent {
     const hooks = parsePendingHooksMarkdown(raw);
     if (hooks.length === 0) return 0;
 
-    const language: "zh" | "en" | "ru" = /[\u4e00-\u9fff]/.test(raw) ? "zh" : "en";
+    // Bug fix (Russian-localization round 4): the primary source of truth for
+    // the ledger language is the book's resolved language, passed in by the
+    // caller. Only fall back to the content heuristic when no book context is
+    // available (e.g., a CLI invocation that hasn't loaded BookConfig yet),
+    // and even then detect Cyrillic so a Russian ledger does not masquerade
+    // as English.
+    const language: "zh" | "en" | "ru" = bookLanguage ?? detectLedgerLanguage(raw);
     const summariesRaw = await readFile(join(storyDir, "chapter_summaries.md"), "utf-8").catch(() => "");
 
     const { rerunPromotionPass } = await import("../utils/hook-promotion.js");

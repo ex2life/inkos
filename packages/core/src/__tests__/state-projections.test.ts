@@ -127,4 +127,75 @@ describe("state projections", () => {
       "",
     ].join("\n"));
   });
+
+  // Russian-localization round 4, bug 2 regression: previously these three
+  // projection functions accepted "ru" as a type but quietly rendered
+  // Chinese for every non-English value. Since they are the writer-back path
+  // for current_state.md / chapter_summaries.md / pending_hooks.md, that
+  // contaminated the next chapter's context with Chinese for a Russian book.
+  it("renders the current state projection in Russian for language=\"ru\"", () => {
+    const markdown = renderCurrentStateProjection({
+      chapter: 5,
+      facts: [
+        {
+          subject: "protagonist",
+          predicate: "Current Goal",
+          object: "Найти пропавший дневник наставника.",
+          validFromChapter: 5,
+          validUntilChapter: null,
+          sourceChapter: 5,
+        },
+      ],
+    }, "ru");
+
+    // Section heading and table-header labels must be Russian, the
+    // (not set) placeholder must be Russian too, and we must not leak the
+    // Chinese variant.
+    expect(markdown).toContain("# Текущее состояние");
+    expect(markdown).toContain("| Поле | Значение |");
+    expect(markdown).toContain("| Текущая глава | 5 |");
+    expect(markdown).toContain("| Текущая цель | Найти пропавший дневник наставника. |");
+    expect(markdown).toContain("(не задано)");
+    expect(markdown).not.toMatch(/[一-鿿]/);
+    expect(markdown).not.toContain("Current Chapter");
+
+    const summaries = renderChapterSummariesProjection({
+      rows: [
+        {
+          chapter: 1,
+          title: "Возвращение в Заречье",
+          characters: "Лина",
+          events: "Лина возвращается в родной дом.",
+          stateChanges: "Открыт долг наставника.",
+          hookActivity: "mentor-debt запущена",
+          mood: "тревожное",
+          chapterType: "пролог",
+        },
+      ],
+    }, "ru");
+    expect(summaries).toContain("# Сводки по главам");
+    expect(summaries).toContain("| Глава | Заголовок | Персонажи");
+    expect(summaries).not.toMatch(/[一-鿿]/);
+
+    const hooks = renderHooksProjection({
+      hooks: [
+        {
+          hookId: "mentor-debt",
+          startChapter: 1,
+          type: "relationship",
+          status: "open",
+          lastAdvancedChapter: 1,
+          expectedPayoff: "Раскрыть личность кредитора.",
+          notes: "Печать сорвана.",
+        },
+      ],
+    }, "ru");
+    expect(hooks).toContain("# Незакрытые зацепки");
+    expect(hooks).toContain("начальная глава");
+    expect(hooks).toContain("| mentor-debt |");
+    // dependsOn defaults to empty list — should render the Russian "нет"
+    // rather than the Chinese "无" or the English "none".
+    expect(hooks).toContain("| нет |");
+    expect(hooks).not.toMatch(/[一-鿿]/);
+  });
 });

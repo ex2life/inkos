@@ -1543,8 +1543,11 @@ export class PipelineRunner {
           const summariesRaw = await readFile(join(promotionStoryDir, "chapter_summaries.md"), "utf-8").catch(() => "");
           const promotionResult = rerunPromotionPass(hooks, summariesRaw);
           if (promotionResult.updated) {
-            const ledgerLang: "zh" | "en" | "ru" = /[\u4e00-\u9fff]/.test(ledgerRaw) ? "zh" : "en";
-            await writeFile(ledgerPath, renderHookSnapshot([...promotionResult.hooks], ledgerLang), "utf-8");
+            // Bug fix (Russian-localization round 4): the previous CJK-only
+            // heuristic flipped Cyrillic ledgers to "en" and overwrote the
+            // file with English headers. Pass the resolved book language
+            // explicitly -- that's the authoritative source.
+            await writeFile(ledgerPath, renderHookSnapshot([...promotionResult.hooks], pipelineLang), "utf-8");
             this.config.logger?.info(`[promotion] ${promotionResult.flippedCount} hook(s) promoted after chapter ${chapterNumber}`);
           }
         }

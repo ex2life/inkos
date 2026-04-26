@@ -17,7 +17,11 @@ export function renderHooksProjection(
   language: "zh" | "en" | "ru" = "zh",
   options?: { readonly currentChapter?: number },
 ): string {
-  const title = language === "en" ? "# Pending Hooks" : "# 伏笔池";
+  const title = language === "en"
+    ? "# Pending Hooks"
+    : language === "ru"
+      ? "# Незакрытые зацепки"
+      : "# 伏笔池";
   // Phase 7 + hotfixes 1 & 2: depends_on / pays_off_in_arc / core_hook / half_life / promoted
   // are visible columns, so writer and reviewer both see the causal chain, planned payoff arc,
   // stale threshold, and promotion flag. stale / blocked diagnostic flags are appended to the
@@ -25,6 +29,11 @@ export function renderHooksProjection(
   const headers = language === "en"
     ? [
       "| hook_id | start_chapter | type | status | last_advanced_chapter | expected_payoff | payoff_timing | depends_on | pays_off_in_arc | core_hook | half_life | promoted | notes |",
+      "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    : language === "ru"
+    ? [
+      "| hook_id | начальная глава | тип | статус | последний сдвиг | ожидаемая расплата | темп расплаты | зависит от | закрывается в томе | ключевой | период полураспада | повышен | заметки |",
       "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     : [
@@ -72,12 +81,17 @@ export function renderHooksProjection(
 }
 
 function renderDependsOnCell(ids: ReadonlyArray<string>, language: "zh" | "en" | "ru"): string {
-  if (ids.length === 0) return language === "en" ? "none" : "无";
+  if (ids.length === 0) {
+    if (language === "en") return "none";
+    if (language === "ru") return "нет";
+    return "无";
+  }
   return `[${ids.join(", ")}]`;
 }
 
 function renderCoreHookCell(isCore: boolean, language: "zh" | "en" | "ru"): string {
   if (language === "en") return isCore ? "true" : "false";
+  if (language === "ru") return isCore ? "да" : "нет";
   return isCore ? "是" : "否";
 }
 
@@ -89,6 +103,7 @@ function renderHalfLifeCell(value: number | undefined): string {
 function renderPromotedCell(value: boolean | undefined, language: "zh" | "en" | "ru"): string {
   if (value === undefined) return "";
   if (language === "en") return value ? "true" : "false";
+  if (language === "ru") return value ? "да" : "нет";
   return value ? "是" : "否";
 }
 
@@ -96,10 +111,19 @@ export function renderChapterSummariesProjection(
   state: ChapterSummariesState,
   language: "zh" | "en" | "ru" = "zh",
 ): string {
-  const title = language === "en" ? "# Chapter Summaries" : "# 章节摘要";
+  const title = language === "en"
+    ? "# Chapter Summaries"
+    : language === "ru"
+      ? "# Сводки по главам"
+      : "# 章节摘要";
   const headers = language === "en"
     ? [
       "| Chapter | Title | Characters | Key Events | State Changes | Hook Activity | Mood | Chapter Type |",
+      "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    : language === "ru"
+    ? [
+      "| Глава | Заголовок | Персонажи | Ключевые события | Изменения состояния | Динамика зацепок | Настроение | Тип главы |",
       "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     : [
@@ -145,6 +169,22 @@ export function renderCurrentStateProjection(
       placeholders: "(not set)",
       additionalTitle: "## Additional State",
     }
+    : language === "ru"
+    ? {
+      title: "# Текущее состояние",
+      tableHeader: "| Поле | Значение |",
+      labels: {
+        chapter: "Текущая глава",
+        location: "Текущее местоположение",
+        protagonistState: "Состояние главного героя",
+        goal: "Текущая цель",
+        constraint: "Текущее ограничение",
+        alliances: "Текущая расстановка сил",
+        conflict: "Текущий конфликт",
+      },
+      placeholders: "(не задано)",
+      additionalTitle: "## Прочее состояние",
+    }
     : {
       title: "# 当前状态",
       tableHeader: "| 字段 | 值 |",
@@ -161,6 +201,10 @@ export function renderCurrentStateProjection(
       additionalTitle: "## 其他状态",
     };
 
+  // The aliases below are load-bearing predicate keys used to look up facts
+  // stored in the runtime state. They MUST stay aligned with the canonical
+  // English/Chinese identifiers other agents and reducers emit. Russian
+  // labels are display-only and are not added as aliases.
   const slots = [
     {
       label: layout.labels.location,

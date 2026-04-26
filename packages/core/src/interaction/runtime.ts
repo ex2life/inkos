@@ -109,16 +109,28 @@ function extractToolMetadata(value: unknown): InteractionToolMetadata {
 }
 
 function resolveRuntimeLanguage(request: InteractionRequest): RuntimeLanguage {
-  return request.language === "en" ? "en" : "zh";
+  if (request.language === "en") return "en";
+  if (request.language === "ru") return "ru";
+  return "zh";
 }
 
-function localize<T>(language: RuntimeLanguage, messages: { zh: T; en: T }): T {
-  return language === "en" ? messages.en : messages.zh;
+function localize<T>(language: RuntimeLanguage, messages: { zh: T; en: T; ru: T }): T {
+  if (language === "en") return messages.en;
+  if (language === "ru") return messages.ru;
+  return messages.zh;
 }
 
 function localizeMode(mode: AutomationMode, language: RuntimeLanguage): string {
   if (language === "en") {
     return mode;
+  }
+
+  if (language === "ru") {
+    return {
+      auto: "автоматический",
+      semi: "полуавтоматический",
+      manual: "ручной",
+    }[mode] ?? mode;
   }
 
   return {
@@ -132,31 +144,47 @@ function renderCreationDraft(
   draft: NonNullable<InteractionSession["creationDraft"]>,
   language: RuntimeLanguage,
 ): string {
-  const lines = language === "en"
-    ? [
-        "# Current Book Draft",
-        draft.title ? `- Title: ${draft.title}` : undefined,
-        draft.genre ? `- Genre: ${draft.genre}` : undefined,
-        draft.platform ? `- Platform: ${draft.platform}` : undefined,
-        draft.worldPremise ? `- World: ${draft.worldPremise}` : undefined,
-        draft.protagonist ? `- Protagonist: ${draft.protagonist}` : undefined,
-        draft.conflictCore ? `- Core Conflict: ${draft.conflictCore}` : undefined,
-        draft.volumeOutline ? `- Volume Direction: ${draft.volumeOutline}` : undefined,
-        draft.blurb ? `- Blurb: ${draft.blurb}` : undefined,
-        draft.nextQuestion ? `- Next: ${draft.nextQuestion}` : undefined,
-      ]
-    : [
-        "# 当前创作草案",
-        draft.title ? `- 书名：${draft.title}` : undefined,
-        draft.genre ? `- 题材：${draft.genre}` : undefined,
-        draft.platform ? `- 平台：${draft.platform}` : undefined,
-        draft.worldPremise ? `- 世界观：${draft.worldPremise}` : undefined,
-        draft.protagonist ? `- 主角：${draft.protagonist}` : undefined,
-        draft.conflictCore ? `- 核心冲突：${draft.conflictCore}` : undefined,
-        draft.volumeOutline ? `- 卷纲方向：${draft.volumeOutline}` : undefined,
-        draft.blurb ? `- 简介：${draft.blurb}` : undefined,
-        draft.nextQuestion ? `- 下一步：${draft.nextQuestion}` : undefined,
-      ];
+  let lines: Array<string | undefined>;
+  if (language === "en") {
+    lines = [
+      "# Current Book Draft",
+      draft.title ? `- Title: ${draft.title}` : undefined,
+      draft.genre ? `- Genre: ${draft.genre}` : undefined,
+      draft.platform ? `- Platform: ${draft.platform}` : undefined,
+      draft.worldPremise ? `- World: ${draft.worldPremise}` : undefined,
+      draft.protagonist ? `- Protagonist: ${draft.protagonist}` : undefined,
+      draft.conflictCore ? `- Core Conflict: ${draft.conflictCore}` : undefined,
+      draft.volumeOutline ? `- Volume Direction: ${draft.volumeOutline}` : undefined,
+      draft.blurb ? `- Blurb: ${draft.blurb}` : undefined,
+      draft.nextQuestion ? `- Next: ${draft.nextQuestion}` : undefined,
+    ];
+  } else if (language === "ru") {
+    lines = [
+      "# Текущий черновик книги",
+      draft.title ? `- Название: ${draft.title}` : undefined,
+      draft.genre ? `- Жанр: ${draft.genre}` : undefined,
+      draft.platform ? `- Площадка: ${draft.platform}` : undefined,
+      draft.worldPremise ? `- Мир: ${draft.worldPremise}` : undefined,
+      draft.protagonist ? `- Главный герой: ${draft.protagonist}` : undefined,
+      draft.conflictCore ? `- Ключевой конфликт: ${draft.conflictCore}` : undefined,
+      draft.volumeOutline ? `- Направление тома: ${draft.volumeOutline}` : undefined,
+      draft.blurb ? `- Аннотация: ${draft.blurb}` : undefined,
+      draft.nextQuestion ? `- Следующий шаг: ${draft.nextQuestion}` : undefined,
+    ];
+  } else {
+    lines = [
+      "# 当前创作草案",
+      draft.title ? `- 书名：${draft.title}` : undefined,
+      draft.genre ? `- 题材：${draft.genre}` : undefined,
+      draft.platform ? `- 平台：${draft.platform}` : undefined,
+      draft.worldPremise ? `- 世界观：${draft.worldPremise}` : undefined,
+      draft.protagonist ? `- 主角：${draft.protagonist}` : undefined,
+      draft.conflictCore ? `- 核心冲突：${draft.conflictCore}` : undefined,
+      draft.volumeOutline ? `- 卷纲方向：${draft.volumeOutline}` : undefined,
+      draft.blurb ? `- 简介：${draft.blurb}` : undefined,
+      draft.nextQuestion ? `- 下一步：${draft.nextQuestion}` : undefined,
+    ];
+  }
   return lines.filter(Boolean).join("\n");
 }
 
@@ -175,6 +203,7 @@ function buildTaskStartedState(
         stageLabel: localize(language, {
           zh: "准备章节输入",
           en: "preparing chapter inputs",
+          ru: "готовлю входные данные главы",
         }),
       };
     case "develop_book":
@@ -184,6 +213,7 @@ function buildTaskStartedState(
         stageLabel: localize(language, {
           zh: "收敛创作草案",
           en: "developing book draft",
+          ru: "развиваю черновик замысла книги",
         }),
       };
     case "create_book":
@@ -193,6 +223,7 @@ function buildTaskStartedState(
         stageLabel: localize(language, {
           zh: "创建作品基础",
           en: "creating book foundation",
+          ru: "закладываю основу произведения",
         }),
       };
     case "export_book":
@@ -203,6 +234,7 @@ function buildTaskStartedState(
         stageLabel: localize(language, {
           zh: "导出作品文件",
           en: "exporting book artifacts",
+          ru: "экспортирую файлы произведения",
         }),
       };
     case "revise_chapter":
@@ -212,8 +244,8 @@ function buildTaskStartedState(
         bookId: request.bookId ?? session.activeBookId,
         chapterNumber: request.chapterNumber ?? session.activeChapterNumber,
         stageLabel: request.intent === "rewrite_chapter"
-          ? localize(language, { zh: "重写章节", en: "rewriting chapter" })
-          : localize(language, { zh: "修订章节", en: "revising chapter" }),
+          ? localize(language, { zh: "重写章节", en: "rewriting chapter", ru: "переписываю главу" })
+          : localize(language, { zh: "修订章节", en: "revising chapter", ru: "редактирую главу" }),
       };
     case "update_focus":
     case "update_author_intent":
@@ -225,6 +257,7 @@ function buildTaskStartedState(
         stageLabel: localize(language, {
           zh: "应用项目修改",
           en: "applying project edit",
+          ru: "применяю правки проекта",
         }),
       };
     case "pause_book":
@@ -236,6 +269,7 @@ function buildTaskStartedState(
         stageLabel: localize(language, {
           zh: "已由用户暂停",
           en: "paused by user",
+          ru: "приостановлено пользователем",
         }),
       };
     default:
@@ -246,6 +280,7 @@ function buildTaskStartedState(
         stageLabel: localize(language, {
           zh: `处理中：${request.intent}`,
           en: `handling ${request.intent}`,
+          ru: `обрабатываю запрос ${request.intent}`,
         }),
       };
   }
@@ -297,10 +332,12 @@ function buildPendingDecision(
       ? localize(language, {
           zh: "执行已完成。请明确选择下一步操作。",
           en: "Execution finished. Choose the next action explicitly.",
+          ru: "Выполнение завершено. Явно выберите следующее действие.",
         })
       : localize(language, {
           zh: "执行已完成，等待你的下一步决定。",
           en: "Execution finished. Waiting for your next decision.",
+          ru: "Выполнение завершено. Жду вашего следующего решения.",
         }),
   };
 }
@@ -318,6 +355,7 @@ function buildWaitingExecution(
     stageLabel: localize(language, {
       zh: "等待你的下一步决定",
       en: "waiting for your next decision",
+      ru: "жду вашего следующего решения",
     }),
   };
 }
@@ -363,12 +401,14 @@ async function handleDraftLifecycleRequest(params: {
         throw new Error(localize(language, {
           zh: "创作草案会话暂未实现。",
           en: "Book-draft ideation is not implemented yet.",
+          ru: "Сессия проработки замысла книги пока не реализована.",
         }));
       }
       if (!request.instruction) {
         throw new Error(localize(language, {
           zh: "创作草案需要一条用户输入。",
           en: "Book-draft ideation requires user input.",
+          ru: "Для проработки замысла нужно сообщение от пользователя.",
         }));
       }
       const toolResult = await tools.developBookDraft(request.instruction, session.creationDraft);
@@ -378,6 +418,7 @@ async function handleDraftLifecycleRequest(params: {
         throw new Error(localize(language, {
           zh: "创作草案工具没有返回草案数据。",
           en: "Book-draft tool did not return draft data.",
+          ru: "Инструмент проработки замысла не вернул данные черновика.",
         }));
       }
       const newRound: DraftRound = {
@@ -402,10 +443,12 @@ async function handleDraftLifecycleRequest(params: {
         session: addEvent(completed, "task.completed", "completed", localize(language, {
           zh: "已更新创作草案。",
           en: "Updated the book draft.",
+          ru: "Черновик замысла обновлён.",
         })),
         responseText: metadata.responseText ?? localize(language, {
           zh: "已更新创作草案。",
           en: "Updated the book draft.",
+          ru: "Черновик замысла обновлён.",
         }),
         details: metadata.details,
       };
@@ -417,6 +460,7 @@ async function handleDraftLifecycleRequest(params: {
           responseText: localize(language, {
             zh: "当前还没有创作草案。先告诉我你想写什么，再逐步把书收出来。",
             en: "There is no active book draft yet. Start by telling me what you want to write.",
+            ru: "Активного черновика замысла пока нет. Расскажите, что хотите написать — тогда соберём книгу шаг за шагом.",
           }),
         };
       }
@@ -430,6 +474,7 @@ async function handleDraftLifecycleRequest(params: {
         throw new Error(localize(language, {
           zh: "交互运行时暂未实现创建作品。",
           en: "Book creation is not implemented in the interaction runtime yet.",
+          ru: "Создание произведения в интерактивной среде пока не реализовано.",
         }));
       }
       const effectiveDraft = session.creationDraft;
@@ -438,6 +483,7 @@ async function handleDraftLifecycleRequest(params: {
         throw new Error(localize(language, {
           zh: "创建作品需要标题。",
           en: "Book creation requires a title.",
+          ru: "Для создания произведения нужно название.",
         }));
       }
       const toolResult = await tools.createBook({
@@ -467,6 +513,7 @@ async function handleDraftLifecycleRequest(params: {
         throw new Error(localize(language, {
           zh: "创建作品工具没有返回作品 ID。",
           en: "Create-book tool did not return a book id.",
+          ru: "Инструмент создания произведения не вернул идентификатор книги.",
         }));
       }
       const nextSession = appendToolEvents(
@@ -481,10 +528,12 @@ async function handleDraftLifecycleRequest(params: {
         session: addEvent(completed, "task.completed", "completed", localize(language, {
           zh: `已创建作品 ${createdBookId}。`,
           en: `Created ${createdBookId}.`,
+          ru: `Произведение ${createdBookId} создано.`,
         })),
         responseText: metadata.responseText ?? localize(language, {
           zh: `已创建作品 ${createdBookId}。`,
           en: `Created ${createdBookId}.`,
+          ru: `Произведение ${createdBookId} создано.`,
         }),
         details: metadata.details,
       };
@@ -495,10 +544,12 @@ async function handleDraftLifecycleRequest(params: {
         session: addEvent(completed, "task.completed", "completed", localize(language, {
           zh: "已丢弃当前创作草案。",
           en: "Discarded the current book draft.",
+          ru: "Текущий черновик замысла отброшен.",
         })),
         responseText: localize(language, {
           zh: "已丢弃当前创作草案。",
           en: "Discarded the current book draft.",
+          ru: "Текущий черновик замысла отброшен.",
         }),
       };
     }
@@ -524,15 +575,18 @@ async function handleBookSelectionRequest(params: {
         session: addEvent(completed, "task.completed", "completed", localize(language, {
           zh: `已列出 ${books.length} 本作品。`,
           en: `Listed ${books.length} book(s).`,
+          ru: `Найдено произведений: ${books.length}.`,
         })),
         responseText: books.length > 0
           ? localize(language, {
               zh: `作品列表：${books.join("、")}`,
               en: `Books: ${books.join(", ")}`,
+              ru: `Список произведений: ${books.join(", ")}`,
             })
           : localize(language, {
               zh: "当前项目下没有作品。",
               en: "No books found in this project.",
+              ru: "В текущем проекте произведений не найдено.",
             }),
       };
     }
@@ -541,6 +595,7 @@ async function handleBookSelectionRequest(params: {
         throw new Error(localize(language, {
           zh: "切换作品需要提供作品 ID。",
           en: "Book selection requires a book id.",
+          ru: "Для переключения произведения нужно указать его идентификатор.",
         }));
       }
       const books = await tools.listBooks();
@@ -548,6 +603,7 @@ async function handleBookSelectionRequest(params: {
         throw new Error(localize(language, {
           zh: `当前项目中找不到作品「${request.bookId}」。`,
           en: `Book "${request.bookId}" not found in this project.`,
+          ru: `Произведение «${request.bookId}» в текущем проекте не найдено.`,
         }));
       }
       const completed = markCompleted(bindActiveBook(session, request.bookId));
@@ -555,10 +611,12 @@ async function handleBookSelectionRequest(params: {
         session: addEvent(completed, "task.completed", "completed", localize(language, {
           zh: `已切换当前作品到 ${request.bookId}。`,
           en: `Bound active book to ${request.bookId}.`,
+          ru: `Активное произведение переключено на ${request.bookId}.`,
         })),
         responseText: localize(language, {
           zh: `当前作品：${request.bookId}`,
           en: `Active book: ${request.bookId}`,
+          ru: `Активное произведение: ${request.bookId}`,
         }),
       };
     }
@@ -600,6 +658,7 @@ export async function runInteractionRequest(params: {
   session = addEvent(session, "task.started", session.currentExecution!.status, localize(language, {
     zh: `开始执行 ${request.intent}。`,
     en: `Started ${request.intent}.`,
+    ru: `Начато выполнение ${request.intent}.`,
   }));
 
   const markCompleted = (nextSession: InteractionSession): InteractionSession => ({
@@ -611,6 +670,7 @@ export async function runInteractionRequest(params: {
       stageLabel: localize(language, {
         zh: "已完成",
         en: "completed",
+        ru: "завершено",
       }),
     },
   });
@@ -649,6 +709,7 @@ export async function runInteractionRequest(params: {
         throw new Error(localize(language, {
           zh: "当前交互会话还没有绑定作品。",
           en: "No active book is bound to the interaction session.",
+          ru: "К текущей сессии взаимодействия не привязано ни одно произведение.",
         }));
       }
       const toolResult = await params.tools.writeNextChapter(bookId);
@@ -675,16 +736,19 @@ export async function runInteractionRequest(params: {
         session: addEvent(completed, "task.completed", "completed", localize(language, {
           zh: `已为 ${bookId} 完成下一章写作。`,
           en: `Completed write_next for ${bookId}.`,
+          ru: `Для ${bookId} дописана следующая глава.`,
         })),
         responseText: metadata.responseText ?? (
           pendingDecision
             ? localize(language, {
                 zh: `已为 ${bookId} 完成下一章写作，等待你的下一步决定。`,
                 en: `Completed write_next for ${bookId}; waiting for your next decision.`,
+                ru: `Для ${bookId} дописана следующая глава; жду вашего следующего решения.`,
               })
             : localize(language, {
                 zh: `已为 ${bookId} 完成下一章写作。`,
                 en: `Completed write_next for ${bookId}.`,
+                ru: `Для ${bookId} дописана следующая глава.`,
               })
         ),
       };
@@ -696,12 +760,14 @@ export async function runInteractionRequest(params: {
         throw new Error(localize(language, {
           zh: "当前交互会话还没有绑定作品。",
           en: "No active book is bound to the interaction session.",
+          ru: "К текущей сессии взаимодействия не привязано ни одно произведение.",
         }));
       }
       if (!request.chapterNumber) {
         throw new Error(localize(language, {
           zh: "修订章节需要章节号。",
           en: "Chapter number is required for chapter revision.",
+          ru: "Для редактирования главы нужно указать её номер.",
         }));
       }
       const mode: ReviseMode = request.intent === "rewrite_chapter" ? "rewrite" : "local-fix";
@@ -732,6 +798,9 @@ export async function runInteractionRequest(params: {
             ? `已为 ${bookId} 完成章节重写。`
             : `已为 ${bookId} 完成章节修订。`,
           en: `Completed ${request.intent} for ${bookId}.`,
+          ru: request.intent === "rewrite_chapter"
+            ? `Для ${bookId} глава полностью переписана.`
+            : `Для ${bookId} глава отредактирована.`,
         })),
         responseText: metadata.responseText ?? (
           pendingDecision
@@ -740,12 +809,18 @@ export async function runInteractionRequest(params: {
                   ? `已为 ${bookId} 完成章节重写，等待你的下一步决定。`
                   : `已为 ${bookId} 完成章节修订，等待你的下一步决定。`,
                 en: `Completed ${request.intent} for ${bookId}; waiting for your next decision.`,
+                ru: request.intent === "rewrite_chapter"
+                  ? `Для ${bookId} глава полностью переписана; жду вашего следующего решения.`
+                  : `Для ${bookId} глава отредактирована; жду вашего следующего решения.`,
               })
             : localize(language, {
                 zh: request.intent === "rewrite_chapter"
                   ? `已为 ${bookId} 完成章节重写。`
                   : `已为 ${bookId} 完成章节修订。`,
                 en: `Completed ${request.intent} for ${bookId}.`,
+                ru: request.intent === "rewrite_chapter"
+                  ? `Для ${bookId} глава полностью переписана.`
+                  : `Для ${bookId} глава отредактирована.`,
               })
         ),
       };
@@ -756,12 +831,14 @@ export async function runInteractionRequest(params: {
         throw new Error(localize(language, {
           zh: "当前交互会话还没有绑定作品。",
           en: "No active book is bound to the interaction session.",
+          ru: "К текущей сессии взаимодействия не привязано ни одно произведение.",
         }));
       }
       if (!request.chapterNumber || !request.targetText || !request.replacementText) {
         throw new Error(localize(language, {
           zh: "正文修补需要章节号、目标文本和替换文本。",
           en: "Chapter patch requires chapter number, target text, and replacement text.",
+          ru: "Для точечной правки текста нужны номер главы, исходный фрагмент и замена.",
         }));
       }
       const toolResult = await params.tools.patchChapterText(
@@ -794,16 +871,19 @@ export async function runInteractionRequest(params: {
         session: addEvent(completed, "task.completed", "completed", localize(language, {
           zh: `已修补 ${bookId} 的第 ${chapterNumber} 章。`,
           en: `Patched chapter ${chapterNumber} for ${bookId}.`,
+          ru: `Глава ${chapterNumber} произведения ${bookId} точечно отредактирована.`,
         })),
         responseText: metadata.responseText ?? (
           pendingDecision
             ? localize(language, {
                 zh: `已修补 ${bookId} 的第 ${chapterNumber} 章，等待你的下一步决定。`,
                 en: `Patched chapter ${chapterNumber} for ${bookId}; waiting for your next decision.`,
+                ru: `Глава ${chapterNumber} произведения ${bookId} точечно отредактирована; жду вашего следующего решения.`,
               })
             : localize(language, {
                 zh: `已修补 ${bookId} 的第 ${chapterNumber} 章。`,
                 en: `Patched chapter ${chapterNumber} for ${bookId}.`,
+                ru: `Глава ${chapterNumber} произведения ${bookId} точечно отредактирована.`,
               })
         ),
       };
@@ -814,12 +894,14 @@ export async function runInteractionRequest(params: {
         throw new Error(localize(language, {
           zh: "当前交互会话还没有绑定作品。",
           en: "No active book is bound to the interaction session.",
+          ru: "К текущей сессии взаимодействия не привязано ни одно произведение.",
         }));
       }
       if (!request.oldValue || !request.newValue) {
         throw new Error(localize(language, {
           zh: "实体改名需要旧值和新值。",
           en: "Entity rename requires old and new values.",
+          ru: "Для переименования сущности нужны старое и новое значения.",
         }));
       }
       const toolResult = await params.tools.renameEntity(bookId, request.oldValue, request.newValue);
@@ -846,16 +928,19 @@ export async function runInteractionRequest(params: {
         session: addEvent(completed, "task.completed", "completed", localize(language, {
           zh: `已在 ${bookId} 中把 ${request.oldValue} 改成 ${request.newValue}。`,
           en: `Renamed ${request.oldValue} to ${request.newValue} in ${bookId}.`,
+          ru: `В ${bookId} «${request.oldValue}» переименовано в «${request.newValue}».`,
         })),
         responseText: metadata.responseText ?? (
           pendingDecision
             ? localize(language, {
                 zh: `已在 ${bookId} 中把 ${request.oldValue} 改成 ${request.newValue}，等待你的下一步决定。`,
                 en: `Renamed ${request.oldValue} to ${request.newValue} in ${bookId}; waiting for your next decision.`,
+                ru: `В ${bookId} «${request.oldValue}» переименовано в «${request.newValue}»; жду вашего следующего решения.`,
               })
             : localize(language, {
                 zh: `已在 ${bookId} 中把 ${request.oldValue} 改成 ${request.newValue}。`,
                 en: `Renamed ${request.oldValue} to ${request.newValue} in ${bookId}.`,
+                ru: `В ${bookId} «${request.oldValue}» переименовано в «${request.newValue}».`,
               })
         ),
       };
@@ -866,12 +951,14 @@ export async function runInteractionRequest(params: {
         throw new Error(localize(language, {
           zh: "当前交互会话还没有绑定作品。",
           en: "No active book is bound to the interaction session.",
+          ru: "К текущей сессии взаимодействия не привязано ни одно произведение.",
         }));
       }
       if (!request.instruction) {
         throw new Error(localize(language, {
           zh: "更新焦点需要提供内容。",
           en: "Focus update requires instruction content.",
+          ru: "Для обновления текущего фокуса нужно содержимое инструкции.",
         }));
       }
       const toolResult = await params.tools.updateCurrentFocus(bookId, request.instruction);
@@ -893,16 +980,19 @@ export async function runInteractionRequest(params: {
         session: addEvent(completed, "task.completed", "completed", localize(language, {
           zh: `已更新 ${bookId} 的当前焦点。`,
           en: `Updated current focus for ${bookId}.`,
+          ru: `Текущий фокус для ${bookId} обновлён.`,
         })),
         responseText: metadata.responseText ?? (
           pendingDecision
             ? localize(language, {
                 zh: `已更新 ${bookId} 的当前焦点，等待你的下一步决定。`,
                 en: `Updated current focus for ${bookId}; waiting for your next decision.`,
+                ru: `Текущий фокус для ${bookId} обновлён; жду вашего следующего решения.`,
               })
             : localize(language, {
                 zh: `已更新 ${bookId} 的当前焦点。`,
                 en: `Updated current focus for ${bookId}.`,
+                ru: `Текущий фокус для ${bookId} обновлён.`,
               })
         ),
       };
@@ -913,12 +1003,14 @@ export async function runInteractionRequest(params: {
         throw new Error(localize(language, {
           zh: "当前交互会话还没有绑定作品。",
           en: "No active book is bound to the interaction session.",
+          ru: "К текущей сессии взаимодействия не привязано ни одно произведение.",
         }));
       }
       if (!request.instruction) {
         throw new Error(localize(language, {
           zh: "更新作者意图需要提供内容。",
           en: "Author intent update requires instruction content.",
+          ru: "Для обновления авторского замысла нужно содержимое инструкции.",
         }));
       }
       const toolResult = await params.tools.updateAuthorIntent(bookId, request.instruction);
@@ -940,16 +1032,19 @@ export async function runInteractionRequest(params: {
         session: addEvent(completed, "task.completed", "completed", localize(language, {
           zh: `已更新 ${bookId} 的作者意图。`,
           en: `Updated author intent for ${bookId}.`,
+          ru: `Авторский замысел для ${bookId} обновлён.`,
         })),
         responseText: metadata.responseText ?? (
           pendingDecision
             ? localize(language, {
                 zh: `已更新 ${bookId} 的作者意图，等待你的下一步决定。`,
                 en: `Updated author intent for ${bookId}; waiting for your next decision.`,
+                ru: `Авторский замысел для ${bookId} обновлён; жду вашего следующего решения.`,
               })
             : localize(language, {
                 zh: `已更新 ${bookId} 的作者意图。`,
                 en: `Updated author intent for ${bookId}.`,
+                ru: `Авторский замысел для ${bookId} обновлён.`,
               })
         ),
       };
@@ -960,12 +1055,14 @@ export async function runInteractionRequest(params: {
         throw new Error(localize(language, {
           zh: "当前交互会话还没有绑定作品。",
           en: "No active book is bound to the interaction session.",
+          ru: "К текущей сессии взаимодействия не привязано ни одно произведение.",
         }));
       }
       if (!request.fileName || !request.instruction) {
         throw new Error(localize(language, {
           zh: "编辑真相文件需要文件名和内容。",
           en: "Truth-file edit requires a file name and content.",
+          ru: "Для правки truth-файла нужны имя файла и содержимое.",
         }));
       }
       const toolResult = await params.tools.writeTruthFile(bookId, request.fileName, request.instruction);
@@ -987,16 +1084,19 @@ export async function runInteractionRequest(params: {
         session: addEvent(completed, "task.completed", "completed", localize(language, {
           zh: `已更新 ${bookId} 的 ${request.fileName}。`,
           en: `Updated ${request.fileName} for ${bookId}.`,
+          ru: `Файл ${request.fileName} для ${bookId} обновлён.`,
         })),
         responseText: metadata.responseText ?? (
           pendingDecision
             ? localize(language, {
                 zh: `已更新 ${bookId} 的 ${request.fileName}，等待你的下一步决定。`,
                 en: `Updated ${request.fileName} for ${bookId}; waiting for your next decision.`,
+                ru: `Файл ${request.fileName} для ${bookId} обновлён; жду вашего следующего решения.`,
               })
             : localize(language, {
                 zh: `已更新 ${bookId} 的 ${request.fileName}。`,
                 en: `Updated ${request.fileName} for ${bookId}.`,
+                ru: `Файл ${request.fileName} для ${bookId} обновлён.`,
               })
         ),
       };
@@ -1007,12 +1107,14 @@ export async function runInteractionRequest(params: {
         throw new Error(localize(language, {
           zh: "交互运行时暂未实现导出作品。",
           en: "Book export is not implemented in the interaction runtime yet.",
+          ru: "Экспорт произведения в интерактивной среде пока не реализован.",
         }));
       }
       if (!bookId) {
         throw new Error(localize(language, {
           zh: "当前交互会话还没有绑定作品。",
           en: "No active book is bound to the interaction session.",
+          ru: "К текущей сессии взаимодействия не привязано ни одно произведение.",
         }));
       }
       const toolResult = await params.tools.exportBook(bookId, {
@@ -1031,10 +1133,12 @@ export async function runInteractionRequest(params: {
         session: addEvent(completed, "task.completed", "completed", localize(language, {
           zh: `已导出 ${bookId}。`,
           en: `Exported ${bookId}.`,
+          ru: `Произведение ${bookId} экспортировано.`,
         })),
         responseText: metadata.responseText ?? localize(language, {
           zh: `已导出 ${bookId}。`,
           en: `Exported ${bookId}.`,
+          ru: `Произведение ${bookId} экспортировано.`,
         }),
         details: metadata.details,
       };
@@ -1045,10 +1149,12 @@ export async function runInteractionRequest(params: {
         session: addEvent(session, "task.completed", "completed", localize(language, {
           zh: `已切换到${localizeMode(session.automationMode, language)}模式。`,
           en: `Switched mode to ${session.automationMode}.`,
+          ru: `Режим переключён на «${localizeMode(session.automationMode, language)}».`,
         })),
         responseText: localize(language, {
           zh: `已切换到${localizeMode(session.automationMode, language)}模式。`,
           en: `Switched mode to ${session.automationMode}.`,
+          ru: `Режим переключён на «${localizeMode(session.automationMode, language)}».`,
         }),
       };
     case "pause_book": {
@@ -1062,6 +1168,7 @@ export async function runInteractionRequest(params: {
           stageLabel: localize(language, {
             zh: "已由用户暂停",
             en: "paused by user",
+            ru: "приостановлено пользователем",
           }),
         },
       };
@@ -1069,10 +1176,12 @@ export async function runInteractionRequest(params: {
         session: addEvent(paused, "task.completed", "blocked", localize(language, {
           zh: `已暂停${bookId ?? "当前作品"}。`,
           en: `Paused ${bookId ?? "current book"}.`,
+          ru: `Произведение ${bookId ?? "(текущее)"} приостановлено.`,
         })),
         responseText: localize(language, {
           zh: `已暂停${bookId ?? "当前作品"}。`,
           en: `Paused ${bookId ?? "current book"}.`,
+          ru: `Произведение ${bookId ?? "(текущее)"} приостановлено.`,
         }),
       };
     }
@@ -1087,6 +1196,7 @@ export async function runInteractionRequest(params: {
           stageLabel: localize(language, {
             zh: "可继续执行",
             en: "ready to continue",
+            ru: "готово к продолжению",
           }),
         },
       };
@@ -1094,10 +1204,12 @@ export async function runInteractionRequest(params: {
         session: addEvent(resumed, "task.completed", "completed", localize(language, {
           zh: `已恢复${bookId ?? "当前作品"}。`,
           en: `Resumed ${bookId ?? "current book"}.`,
+          ru: `Произведение ${bookId ?? "(текущее)"} возобновлено.`,
         })),
         responseText: localize(language, {
           zh: `已恢复${bookId ?? "当前作品"}。`,
           en: `Resumed ${bookId ?? "current book"}.`,
+          ru: `Произведение ${bookId ?? "(текущее)"} возобновлено.`,
         }),
       };
     }
@@ -1112,24 +1224,28 @@ export async function runInteractionRequest(params: {
         : undefined;
       const metadata = extractToolMetadata(toolResult);
       const responseText = metadata.responseText ?? (
-        /^(hi|hello|hey|你好|嗨|哈喽)$/i.test(prompt)
+        /^(hi|hello|hey|你好|嗨|哈喽|привет|здравствуй|здравствуйте)$/i.test(prompt)
           ? (bookId
               ? localize(language, {
                   zh: `你好。当前作品是 ${bookId}。你可以让我继续写、修订章节，或者解释当前卡住的原因。`,
                   en: `Hi. Active book is ${bookId}. Ask me to continue, revise a chapter, or explain what is blocked.`,
+                  ru: `Здравствуйте. Активное произведение — ${bookId}. Можете попросить продолжить, отредактировать главу или объяснить, на чём всё застопорилось.`,
                 })
               : localize(language, {
                   zh: "你好。当前还没有激活作品。你可以先打开作品、列出作品，或者直接告诉我你要写什么。",
                   en: "Hi. No active book yet. Open a book, list books, or tell me what you want to write.",
+                  ru: "Здравствуйте. Активного произведения пока нет. Откройте книгу, выведите список или сразу опишите, что хотите написать.",
                 }))
           : (bookId
               ? localize(language, {
                   zh: `我在。当前作品是 ${bookId}。你可以让我继续写、修订章节、重写、调整焦点，或者查看流水线为何停止。`,
                   en: `I’m here. Active book is ${bookId}. You can ask me to continue, revise a chapter, rewrite, change focus, or inspect why the pipeline stopped.`,
+                  ru: `Я на связи. Активное произведение — ${bookId}. Можете попросить продолжить, отредактировать или переписать главу, сменить фокус либо разобрать, почему пайплайн остановился.`,
                 })
               : localize(language, {
                   zh: "我在。当前还没有绑定作品。先打开作品、列出作品，或者直接描述你要写什么。",
                   en: "I’m here. No active book is bound yet. Open a book, list books, or describe what you want to write.",
+                  ru: "Я на связи. Активного произведения пока не привязано. Откройте книгу, выведите список или просто опишите, что хотите написать.",
                 }))
       );
       const completed = markCompleted(session);
@@ -1147,10 +1263,12 @@ export async function runInteractionRequest(params: {
         ? localize(language, {
             zh: `当前失败上下文：${bookId ?? "当前无激活作品"} 处于 ${stage}。`,
             en: `Current failure context: ${bookId ?? "no active book"} is at ${stage}.`,
+            ru: `Контекст текущего сбоя: ${bookId ?? "активного произведения нет"} находится на этапе «${stage}».`,
           })
         : localize(language, {
             zh: `当前状态：${bookId ?? "当前无激活作品"} 处于 ${stage}。`,
             en: `Current status: ${bookId ?? "no active book"} is at ${stage}.`,
+            ru: `Текущее состояние: ${bookId ?? "активного произведения нет"} находится на этапе «${stage}».`,
           });
       const completed = markCompleted(session);
       return {
@@ -1162,6 +1280,7 @@ export async function runInteractionRequest(params: {
       throw new Error(localize(language, {
         zh: `交互运行时暂未实现意图「${request.intent}」。`,
         en: `Intent "${request.intent}" is not implemented in the interaction runtime yet.`,
+        ru: `Намерение «${request.intent}» в интерактивной среде пока не реализовано.`,
       }));
   }
 }
