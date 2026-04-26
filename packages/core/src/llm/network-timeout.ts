@@ -39,16 +39,21 @@ export async function configureLLMHttpTimeouts(
   const timeoutMs = Math.max(MIN_TIMEOUT_MS, requested);
 
   try {
-    // undici ships with Node 18+; importing dynamically so the build doesn't
-    // require an explicit dependency declaration. If undici is unavailable we
-    // silently skip — falls back to Node's defaults.
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore — undici is a Node built-in, no types declared in this workspace
-    const undici = await import("undici").catch(() => null) as null | {
-      setGlobalDispatcher: (dispatcher: unknown) => void;
-      Agent: new (opts: Record<string, unknown>) => unknown;
-    };
+    // `undici` is the HTTP client backing Node's native `fetch`. It ships
+    // inside Node but is NOT importable as a top-level ESM module without an
+    // explicit dependency declaration — that's why prior dynamic-import
+    // attempts silently no-oped. We declare it in core/package.json so it
+    // resolves cleanly at runtime.
+    const undici = await import("undici").catch((error) => {
+      process.stderr.write(
+        `[inkos] WARN: undici unavailable — LLM HTTP timeouts stay at Node defaults (${String(error?.message ?? error)})\n`,
+      );
+      return null;
+    });
     if (!undici || typeof undici.setGlobalDispatcher !== "function" || typeof undici.Agent !== "function") {
+      process.stderr.write(
+        "[inkos] WARN: undici loaded but missing setGlobalDispatcher/Agent — skipping HTTP timeout override\n",
+      );
       return;
     }
     undici.setGlobalDispatcher(
