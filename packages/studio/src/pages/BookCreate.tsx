@@ -160,7 +160,14 @@ export function pickValidValue(current: string, available: ReadonlyArray<string>
 
 export function defaultChapterWordsForLanguage(language: "zh" | "en" | "ru"): string {
   if (language === "en") return "2000";
-  // Russian web-novel chapters track the Chinese 3000-word baseline.
+  if (language === "ru") {
+    // Russian chapters are counted in *words* (resolveLengthCountingMode → "en_words"),
+    // matching Russian-language web-novel platforms (Author.Today, Литнет) where a
+    // 3000-word chapter (~18,000 chars) is the standard length.
+    return "3000";
+  }
+  // Chinese chapters are counted in *characters*; 3000 characters is the canonical
+  // web-novel baseline (one Chinese character ≈ one English word).
   return "3000";
 }
 

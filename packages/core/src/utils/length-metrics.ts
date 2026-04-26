@@ -20,6 +20,17 @@ export function countChapterLength(
   return normalized.replace(/\s+/g, "").length;
 }
 
+/**
+ * Counting mode resolution.
+ *
+ * - Chinese (zh): characters — one Chinese character ≈ one English word, so the
+ *   3000-char baseline matches a 3000-word English chapter in information density.
+ * - English (en): words — whitespace-delimited tokens.
+ * - Russian (ru): words — Russian uses the same whitespace tokenization as English.
+ *   A 3000-word Russian chapter is ~18,000 characters; counting Russian by
+ *   characters (zh_chars) would treat a normal-length Russian chapter as 6×
+ *   over-target and break length-governance for every Russian book.
+ */
 export function resolveLengthCountingMode(
   language: LengthLanguage = "zh",
 ): LengthCountingMode {
