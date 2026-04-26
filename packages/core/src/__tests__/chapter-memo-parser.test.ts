@@ -91,9 +91,25 @@ describe("parseMemo", () => {
     expect(() => parseMemo(SECTIONS, 12, false)).toThrow(/frontmatter/);
   });
 
-  it("throws when goal exceeds 50 chars", () => {
+  it("throws when goal exceeds 50 chars (Chinese default)", () => {
     const longGoal = "把异常钉成实证".repeat(10);
     expect(() => parseMemo(makeRaw({ goal: longGoal }), 12, false)).toThrow(/goal too long/);
+  });
+
+  it("accepts Russian goals up to 200 chars and rejects longer ones", () => {
+    // Quote with double-quotes to avoid YAML interpreting the colon as a mapping key.
+    const russianGoal = '"Столкнуть Настю с кризисом выбора — остаться в безопасности или рискнуть всем (около ста знаков)"';
+    expect(() => parseMemo(makeRaw({ goal: russianGoal }), 12, false, "ru")).not.toThrow();
+    const longBase = "Столкнуть Настю с кризисом выбора — остаться в безопасности или рискнуть всем";
+    const tooLongRu = `"${longBase.repeat(4)}"`; // ~308 chars inside quotes
+    expect(() => parseMemo(makeRaw({ goal: tooLongRu }), 12, false, "ru")).toThrow(/goal too long.*max 200/);
+  });
+
+  it("accepts English goals up to 200 chars", () => {
+    const englishGoal = '"Push Nastia into the choice of staying safe or risking everything — this English goal is about a hundred chars long"';
+    expect(() => parseMemo(makeRaw({ goal: englishGoal }), 12, false, "en")).not.toThrow();
+    const tooLongEn = `"${"Push Nastia into the choice of staying safe or risking everything ".repeat(4)}"`; // ~268 chars
+    expect(() => parseMemo(makeRaw({ goal: tooLongEn }), 12, false, "en")).toThrow(/goal too long.*max 200/);
   });
 
   it("throws when chapter mismatches expected", () => {

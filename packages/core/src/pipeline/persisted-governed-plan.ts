@@ -64,6 +64,7 @@ export async function savePersistedPlan(
 export async function loadPersistedPlan(
   bookDir: string,
   chapterNumber: number,
+  language?: "zh" | "en" | "ru",
 ): Promise<PlanChapterOutput | null> {
   let raw: string;
   try {
@@ -98,7 +99,7 @@ export async function loadPersistedPlan(
       goal: f.goal,
       threadRefs: f.threadRefs,
     })}---\n${match[2]!}`;
-    memo = parseMemo(reconstructed, chapterNumber, f.isGoldenOpening);
+    memo = parseMemo(reconstructed, chapterNumber, f.isGoldenOpening, language);
   } catch (error) {
     if (error instanceof PlannerParseError) return null;
     throw error;

@@ -3235,7 +3235,7 @@ ${matrix}`,
       options?.reuseExistingIntentWhenContextMissing &&
       (!externalContext || externalContext.trim().length === 0)
     ) {
-      const persisted = await loadPersistedPlan(bookDir, chapterNumber);
+      const persisted = await loadPersistedPlan(bookDir, chapterNumber, book.language);
       if (persisted) return persisted;
     }
 

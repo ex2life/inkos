@@ -259,7 +259,7 @@ export class PlannerAgent extends BaseAgent {
       );
 
       try {
-        return parseMemo(response.content, input.chapterNumber, input.isGoldenOpening);
+        return parseMemo(response.content, input.chapterNumber, input.isGoldenOpening, language);
       } catch (error) {
         if (!(error instanceof PlannerParseError)) {
           throw error;

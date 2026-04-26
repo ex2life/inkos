@@ -60,14 +60,27 @@ function extractSectionContent(body: string, heading: string): string {
 }
 
 /**
+ * Per-language max length for the `goal` field.
+ *
+ * Chinese: 50 characters ≈ 50 word-units (one Chinese character carries roughly
+ * one English word's information density). English / Russian: same information
+ * density needs roughly 4× the character count (Latin/Cyrillic words average
+ * 4-7 chars each), so the equivalent limit is ~200.
+ */
+export function maxGoalLengthForLanguage(language?: "zh" | "en" | "ru"): number {
+  if (language === "en" || language === "ru") return 200;
+  return 50;
+}
+
+/**
  * Parse a planner memo produced by the LLM.
  *
  * Format: YAML frontmatter delimited by `---\n...\n---\n` followed by a
  * markdown body containing the seven required section headings.
  *
  * Strict on core fields (chapter integer + matches expected, goal non-empty
- * and ≤ 50 chars, required section headings present). Lenient on aux fields
- * (threadRefs coerced to string[], defaults to []).
+ * and ≤ language-specific max chars, required section headings present).
+ * Lenient on aux fields (threadRefs coerced to string[], defaults to []).
  *
  * `isGoldenOpening` is authoritative from the caller — any value the LLM
  * includes in the frontmatter is ignored.
@@ -76,6 +89,7 @@ export function parseMemo(
   raw: string,
   expectedChapter: number,
   isGoldenOpening: boolean,
+  language?: "zh" | "en" | "ru",
 ): ChapterMemo {
   const trimmed = raw.trim();
   const match = trimmed.match(/^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/);
@@ -110,9 +124,10 @@ export function parseMemo(
   if (typeof f.goal !== "string" || f.goal.length === 0) {
     throw new PlannerParseError("goal must be a non-empty string");
   }
-  if (f.goal.length > 50) {
+  const maxGoal = maxGoalLengthForLanguage(language);
+  if (f.goal.length > maxGoal) {
     throw new PlannerParseError(
-      `goal too long: ${f.goal.length} chars (max 50)`,
+      `goal too long: ${f.goal.length} chars (max ${maxGoal})`,
     );
   }
 

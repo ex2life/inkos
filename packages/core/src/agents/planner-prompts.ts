@@ -196,7 +196,7 @@ defer:
 
 ## Output requirements
 
-- goal field is no more than 50 characters
+- goal field is no more than 200 characters
 - threadRefs is a YAML array of ids picked from the input pending_hooks / subplot_board
 - Every level-2 heading (##) must appear; none may be empty
 - Do NOT use methodology jargon ("emotional gap", "cyclePhase", "pressure buildup") in the memo — speak directly using this book's people, places, events
@@ -333,7 +333,7 @@ defer:
 
 ## Требования к выводу
 
-- Поле goal — не больше 50 знаков.
+- Поле goal — не больше 200 знаков.
 - threadRefs — YAML-массив id, выбранных из входных pending_hooks / subplot_board.
 - Каждый заголовок второго уровня (##) обязан присутствовать; пустых разделов нет.
 - НЕ используй методологический жаргон («эмоциональный разрыв», «cyclePhase», «накопление давления») в memo — говори напрямую людьми, местами и событиями этой книги.

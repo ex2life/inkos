@@ -565,14 +565,23 @@ describe("ChapterMemoSchema", () => {
     expect(result.threadRefs).toEqual([]);
   });
 
-  it("rejects goal longer than 50 chars", () => {
+  it("rejects goal longer than the schema cap (200 chars — universal max across zh/en/ru)", () => {
     expect(() =>
       ChapterMemoSchema.parse({
         chapter: 1,
-        goal: "a".repeat(51),
+        goal: "a".repeat(201),
         body: "## 当前任务\nx",
       }),
     ).toThrow();
+  });
+
+  it("accepts long goals up to 200 chars at the schema layer (per-language enforcement is separate)", () => {
+    const result = ChapterMemoSchema.parse({
+      chapter: 1,
+      goal: "a".repeat(200),
+      body: "## 当前任务\nx",
+    });
+    expect(result.goal.length).toBe(200);
   });
 
   it("rejects empty body", () => {
