@@ -121,7 +121,7 @@ export function App() {
                className="inline-flex items-center gap-2 rounded-lg border border-border/50 bg-card/70 px-3 py-1.5 text-sm font-semibold text-foreground hover:bg-secondary/50 transition-colors"
              >
                <House size={14} />
-               <span>首页</span>
+               <span>{t("bread.home")}</span>
                <span className="text-muted-foreground/70">/</span>
                <span className="font-serif">InkOS Studio</span>
              </button>
@@ -135,6 +135,7 @@ export function App() {
                   refetchProject();
                 }}
                 className={`text-xs px-2 py-0.5 rounded ${currentLang === "zh" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                title="中文"
               >
                 中
               </button>
@@ -144,8 +145,19 @@ export function App() {
                   refetchProject();
                 }}
                 className={`text-xs px-2 py-0.5 rounded ${currentLang === "en" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                title="English"
               >
                 EN
+              </button>
+              <button
+                onClick={async () => {
+                  await putApi("/project", { language: "ru" });
+                  refetchProject();
+                }}
+                className={`text-xs px-2 py-0.5 rounded ${currentLang === "ru" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                title="Русский"
+              >
+                RU
               </button>
             </div>
 
