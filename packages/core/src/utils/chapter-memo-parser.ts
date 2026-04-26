@@ -9,8 +9,10 @@ export class PlannerParseError extends Error {
 }
 
 // Phase hotfix 4: each required section is a (zh, en) heading pair.
-// The English headings come from PLANNER_MEMO_SYSTEM_PROMPT_EN — we accept
-// EITHER language at parse time so the same parser works for both.
+// Phase hotfix 8: extended to a (zh, en, ru) heading triple. Russian books
+// previously received Russian planner prose with Chinese H2 markers; the
+// writer LLM then leaked those Chinese markers into Russian prose. The
+// parser now accepts whichever of the three a planner emits.
 //
 // Phase hotfix 7: minContentChars enforces non-emptiness per section so
 // "all 7 headings + blank payload" no longer slips through. The "do not"
@@ -21,24 +23,26 @@ export class PlannerParseError extends Error {
 // - 20 chars: long enough to catch obvious empty sections (whitespace,
 //   "(略)", "TODO") but short enough to accept genuinely sparse memos for
 //   breath/transition chapters (Phase 6 sparse-memo principle).
-// - 1 char for "## 不要做" / "## Do not" because "无" / "N/A" / "none" /
-//   "—" are all legitimate for a chapter with no extra prohibitions; we
-//   only need to ensure the section is not whitespace-only.
+// - 1 char for "## 不要做" / "## Do not" / "## Не делать" because "无" /
+//   "N/A" / "none" / "нет" / "—" are all legitimate for a chapter with no
+//   extra prohibitions; we only need to ensure the section is not
+//   whitespace-only.
 interface RequiredSection {
   readonly zh: string;
   readonly en: string;
+  readonly ru: string;
   readonly minContentChars: number;
 }
 
 const REQUIRED_SECTIONS: ReadonlyArray<RequiredSection> = [
-  { zh: "## 当前任务", en: "## Current task", minContentChars: 20 },
-  { zh: "## 读者此刻在等什么", en: "## What the reader is waiting for right now", minContentChars: 20 },
-  { zh: "## 该兑现的 / 暂不掀的", en: "## To pay off / to keep buried", minContentChars: 20 },
-  { zh: "## 日常/过渡承担什么任务", en: "## What the slow / transitional beats carry", minContentChars: 20 },
-  { zh: "## 关键抉择过三连问", en: "## Three-question check on the key choice", minContentChars: 20 },
-  { zh: "## 章尾必须发生的改变", en: "## Required end-of-chapter change", minContentChars: 20 },
-  { zh: "## 本章 hook 账", en: "## Hook ledger for this chapter", minContentChars: 20 },
-  { zh: "## 不要做", en: "## Do not", minContentChars: 1 },
+  { zh: "## 当前任务", en: "## Current task", ru: "## Текущая задача", minContentChars: 20 },
+  { zh: "## 读者此刻在等什么", en: "## What the reader is waiting for right now", ru: "## Чего сейчас ждёт читатель", minContentChars: 20 },
+  { zh: "## 该兑现的 / 暂不掀的", en: "## To pay off / to keep buried", ru: "## Закрыть / Не открывать", minContentChars: 20 },
+  { zh: "## 日常/过渡承担什么任务", en: "## What the slow / transitional beats carry", ru: "## Что несут спокойные / переходные такты", minContentChars: 20 },
+  { zh: "## 关键抉择过三连问", en: "## Three-question check on the key choice", ru: "## Тройной вопрос по ключевому выбору", minContentChars: 20 },
+  { zh: "## 章尾必须发生的改变", en: "## Required end-of-chapter change", ru: "## Обязательные сдвиги к финалу главы", minContentChars: 20 },
+  { zh: "## 本章 hook 账", en: "## Hook ledger for this chapter", ru: "## Реестр крючков главы", minContentChars: 20 },
+  { zh: "## 不要做", en: "## Do not", ru: "## Не делать", minContentChars: 1 },
 ];
 
 /**
@@ -132,28 +136,44 @@ export function parseMemo(
   }
 
   const missing = REQUIRED_SECTIONS.filter(
-    (section) => !body.includes(section.zh) && !body.includes(section.en),
+    (section) =>
+      !body.includes(section.zh)
+      && !body.includes(section.en)
+      && !body.includes(section.ru),
   );
   if (missing.length > 0) {
-    // Report by zh heading (canonical) so the LLM-feedback loop stays stable.
+    // Report headings in the operator's language: when language === "ru" we
+    // surface the Russian variants so the planner's retry-feedback loop stays
+    // in Russian; otherwise zh remains the canonical (other agents recognize
+    // it and the prior contract was zh-by-default).
+    const headingFor = (s: RequiredSection): string =>
+      language === "ru" ? s.ru : s.zh;
     throw new PlannerParseError(
-      `missing sections: ${missing.map((s) => s.zh).join(", ")}`,
+      `missing sections: ${missing.map(headingFor).join(", ")}`,
     );
   }
 
   // Phase hotfix 7: each section's payload must be non-empty (≥ minContentChars).
   // Headings present + blank payload was previously accepted, allowing useless
   // "shell" memos to flow downstream. Threshold differs per section: most need
-  // 20 chars (one short sentence) while "## 不要做" / "## Do not" allows 5
-  // (e.g. "无", "N/A") since "no extra prohibitions" is a legitimate state.
+  // 20 chars (one short sentence) while "## 不要做" / "## Do not" / "## Не
+  // делать" allows 1 (e.g. "无", "N/A", "нет") since "no extra prohibitions"
+  // is a legitimate state.
   const empty = REQUIRED_SECTIONS.filter((section) => {
-    const heading = body.includes(section.zh) ? section.zh : section.en;
+    // The body may contain any of zh/en/ru — pick whichever is actually present.
+    const heading = body.includes(section.zh)
+      ? section.zh
+      : body.includes(section.en)
+        ? section.en
+        : section.ru;
     const content = extractSectionContent(body, heading);
     return content.length < section.minContentChars;
   });
   if (empty.length > 0) {
+    const headingFor = (s: RequiredSection): string =>
+      language === "ru" ? s.ru : s.zh;
     const detail = empty
-      .map((s) => `${s.zh} (need ≥ ${s.minContentChars} chars)`)
+      .map((s) => `${headingFor(s)} (need ≥ ${s.minContentChars} chars)`)
       .join(", ");
     throw new PlannerParseError(`empty sections: ${detail}`);
   }

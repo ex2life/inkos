@@ -43,6 +43,26 @@ defer:
 ## Do not
 - Do not reveal the mother's name`;
 
+// Phase hotfix 8: Russian books emit the ledger heading in Russian.
+const RU_MEMO = `## Текущая задача
+Настя забирает учётную книгу из старого портового склада.
+
+## Реестр крючков главы
+open:
+- [new] хвост в порту || причина: оставить на следующую арку
+
+advance:
+- H007 "расписка Хузи" → planted → pressured
+
+resolve:
+- H003 "пропуск посыльного" → Настя сама снимает его
+
+defer:
+- H009 "происхождение трактата" → время не пришло
+
+## Не делать
+- Не раскрывать имя матери`;
+
 describe("parseHookLedger", () => {
   it("extracts all four sub-lists from a zh memo", () => {
     const ledger = parseHookLedger(ZH_MEMO);
@@ -68,6 +88,13 @@ describe("parseHookLedger", () => {
 
   it("extracts all four sub-lists from an en memo", () => {
     const ledger = parseHookLedger(EN_MEMO);
+    expect(ledger.advance.map((e) => e.id)).toEqual(["H007"]);
+    expect(ledger.resolve.map((e) => e.id)).toEqual(["H003"]);
+    expect(ledger.defer.map((e) => e.id)).toEqual(["H009"]);
+  });
+
+  it("extracts all four sub-lists from a ru memo (## Реестр крючков главы)", () => {
+    const ledger = parseHookLedger(RU_MEMO);
     expect(ledger.advance.map((e) => e.id)).toEqual(["H007"]);
     expect(ledger.resolve.map((e) => e.id)).toEqual(["H003"]);
     expect(ledger.defer.map((e) => e.id)).toEqual(["H009"]);
@@ -167,6 +194,13 @@ advance:
     const draft =
       "Lin Qiu finds Huzi's IOU folded inside the ledger and tucks it away. Later he unpins the errand badge before slipping out.";
     const violations = validateHookLedger(EN_MEMO, draft);
+    expect(violations).toEqual([]);
+  });
+
+  it("accepts russian keyword match for ru memos (## Реестр крючков главы)", () => {
+    const draft =
+      "Настя нашла расписку Хузи между страниц учётной книги и убрала её. Позже она сняла пропуск посыльного, прежде чем выскользнуть из склада.";
+    const violations = validateHookLedger(RU_MEMO, draft);
     expect(violations).toEqual([]);
   });
 

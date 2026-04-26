@@ -1,7 +1,11 @@
 /**
  * Phase 9-3: hard gate that a chapter draft actually acts on the hook ledger
- * the planner declared in the memo's "## 本章 hook 账" / "## Hook ledger for
- * this chapter" section.
+ * the planner declared in the memo's hook-ledger section. The planner emits
+ * the heading in one of three languages depending on `book.language`:
+ *
+ *   - zh: "## 本章 hook 账"
+ *   - en: "## Hook ledger for this chapter"
+ *   - ru: "## Реестр крючков главы"
  *
  * The planner commits, per chapter, to:
  *   - advance: <hook_id> "name" → state-change
@@ -39,6 +43,7 @@ export interface HookLedger {
 const LEDGER_HEADING_PATTERNS = [
   /^#{2,3}\s*本章\s*hook\s*账\s*$/im,
   /^#{2,3}\s*Hook\s+ledger\s+for\s+this\s+chapter\s*$/im,
+  /^#{2,3}\s*Реестр\s+крючков\s+главы\s*$/im,
 ];
 
 const SUBSECTION_KEYS: ReadonlyArray<keyof HookLedger> = ["open", "advance", "resolve", "defer"];
@@ -156,15 +161,15 @@ function extractLedgerEntry(line: string): HookLedgerEntry | undefined {
  * partial echoes still count.
  *
  * Priority 2: if no quoted name, fall back to the descriptor text UP TO the
- * first state-transition arrow (→ or ->), same CJK/ASCII splitting. Anything
- * AFTER the arrow describes new state, not the hook itself, and risks
- * character-name false positives.
+ * first state-transition arrow (→ or ->), same CJK/ASCII/Cyrillic splitting.
+ * Anything AFTER the arrow describes new state, not the hook itself, and
+ * risks character-name false positives.
  */
 function extractKeywords(descriptor: string): ReadonlyArray<string> {
   if (!descriptor) return [];
 
-  // Try the quoted-name anchor first — matches "..." or "..." quotes.
-  const quotedMatch = descriptor.match(/[""]([^""\n]+)[""]/);
+  // Try the quoted-name anchor first — matches "..." or "..." or «...» quotes.
+  const quotedMatch = descriptor.match(/[""«]([^""»\n]+)[""»]/);
   const source = quotedMatch ? quotedMatch[1]! : descriptor.split(/[→]|->/, 1)[0]!;
 
   const cjkRuns = source.match(/[\u4e00-\u9fff]{2,}/g) ?? [];
@@ -177,7 +182,17 @@ function extractKeywords(descriptor: string): ReadonlyArray<string> {
     }
   }
   const ascii = (source.match(/[A-Za-z]{3,}/g) ?? []).map((w) => w.toLowerCase());
-  return dedupeStrings([...cjkTokens, ...ascii].filter((tok) => !ASCII_STOPWORDS.has(tok)));
+  // Phase hotfix 8: Russian books emit Cyrillic hook names. Tokenise on 4+
+  // letter Cyrillic runs so the descriptor produces matchable keywords. The
+  // 4-char floor (vs 3 for ASCII) avoids tiny conjunctions like "или" / "что"
+  // dominating the keyword set.
+  const cyrillic = (source.match(/[Ѐ-ӿ]{4,}/g) ?? []).map((w) => w.toLowerCase());
+  const filtered = [...cjkTokens, ...ascii, ...cyrillic].filter((tok) => {
+    if (ASCII_STOPWORDS.has(tok)) return false;
+    if (CYRILLIC_STOPWORDS.has(tok)) return false;
+    return true;
+  });
+  return dedupeStrings(filtered);
 }
 
 const ASCII_STOPWORDS = new Set([
@@ -186,12 +201,26 @@ const ASCII_STOPWORDS = new Set([
   "planted", "pressured", "near", "payoff", "ready", "stale",
 ]);
 
+const CYRILLIC_STOPWORDS = new Set([
+  // Conjunctions / prepositions / common short words long enough to slip
+  // through the 4-char floor. Keep this list deliberately small — the goal
+  // is only to drop "что/или"-class noise, not stem the language.
+  "или", "что", "это", "этот", "этой", "этих", "тоже", "также",
+  "если", "когда", "пока", "потом", "тогда", "ещё", "уже",
+  "новая", "новый", "новое", "новые",
+  "открыть", "закрыть", "продвинуть", "перенести",
+]);
+
 function draftEchoesEntry(draft: string, entry: HookLedgerEntry): boolean {
   if (entry.keywords.length > 0) {
     const draftLower = draft.toLowerCase();
     return entry.keywords.some((kw) => {
-      // ASCII keywords are already lowercased; CJK keywords case doesn't matter.
-      return /^[a-z]/.test(kw) ? draftLower.includes(kw) : draft.includes(kw);
+      // ASCII / Cyrillic keywords are already lowercased — match against the
+      // lowercased draft so case in prose doesn't break the echo check. CJK
+      // keywords have no case, but using draftLower is still safe.
+      return /^[Ѐ-ӿ]/.test(kw) || /^[a-z]/.test(kw)
+        ? draftLower.includes(kw)
+        : draft.includes(kw);
     });
   }
   // Bare-id ledger line with no descriptor — fall back to ID match.

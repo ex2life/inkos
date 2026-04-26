@@ -179,8 +179,20 @@ describe("Russian planner variants", () => {
     expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).toContain("главный редактор");
     expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).toContain("YAML frontmatter");
     expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).toContain("реестр активных крючков");
-    expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).toContain("## 当前任务");
-    expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).toContain("## 不要做");
+    // Phase hotfix 8: the Russian prompt now emits Russian H2 markers so the
+    // writer LLM no longer mixes Chinese fragments into Russian prose. The
+    // zh / en system prompts keep their original heading sets.
+    expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).toContain("## Текущая задача");
+    expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).toContain("## Не делать");
+    expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).toContain("## Чего сейчас ждёт читатель");
+    expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).toContain("## Закрыть / Не открывать");
+    expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).toContain("## Что несут спокойные / переходные такты");
+    expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).toContain("## Тройной вопрос по ключевому выбору");
+    expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).toContain("## Обязательные сдвиги к финалу главы");
+    expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).toContain("## Реестр крючков главы");
+    // No leftover Chinese H2 markers in the Russian variant.
+    expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).not.toContain("## 当前任务");
+    expect(PLANNER_MEMO_SYSTEM_PROMPT_RU).not.toContain("## 不要做");
     expect(PLANNER_MEMO_SYSTEM_PROMPT_RU.length).toBeGreaterThan(500);
   });
 

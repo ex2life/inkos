@@ -48,9 +48,14 @@ export function sanitizeNarrativeControlText(
  * control block for the writer / reviser prompt.
  *
  * Phase 4: the memo body already contains the 7 required section headings
- * (当前任务 / 读者此刻在等什么 / 该兑现的 / 日常过渡 / 关键抉择 / 章尾 / 不要做)
- * produced by the planner LLM. We emit them at top level so the writer sees
- * each section as its own task-unit instead of one flattened "memo" block.
+ * produced by the planner LLM. The headings can be in any of the three
+ * supported languages — zh (当前任务 / 读者此刻在等什么 / 该兑现的 / 日常过渡 /
+ * 关键抉择 / 章尾 / 不要做), en (Current task / What the reader is waiting
+ * for ... / etc.), or ru (Текущая задача / Чего сейчас ждёт читатель /
+ * Закрыть · Не открывать / Что несут спокойные · переходные такты / Тройной
+ * вопрос по ключевому выбору / Обязательные сдвиги к финалу главы /
+ * Не делать) — we just emit `memo.body` verbatim so the writer sees each
+ * section as its own task-unit instead of one flattened "memo" block.
  */
 export function renderMemoAsNarrativeBlock(
   memo: ChapterMemo,

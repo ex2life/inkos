@@ -262,11 +262,12 @@ export function extractRelevantThreads(pendingHooksRaw: string, subplotBoardRaw:
 
 /**
  * Phase 9-2: render stale hooks that the planner MUST dispose of in this
- * chapter's memo ("## 本章 hook 账"). These are already filtered by
+ * chapter's memo (zh "## 本章 hook 账" / en "## Hook ledger for this chapter"
+ * / ru "## Реестр крючков главы"). These are already filtered by
  * computeRecyclableHooks; here we just format them for the prompt.
  *
  * Language switch mirrors the rest of the planner prompt: zh by default,
- * en for English books.
+ * en for English books, ru for Russian books.
  */
 export function formatRecyclableHooks(
   hooks: ReadonlyArray<StoredHook>,

@@ -1016,7 +1016,10 @@ ${overrides}\n`;
 
   /**
    * Soft-check that the LLM's PRE_WRITE_CHECK output references the three
-   * non-negotiable memo sections: 当前任务, 不要做, 章尾必须发生的改变.
+   * non-negotiable memo sections: current-task, do-not, and required
+   * end-of-chapter change. Each section is recognised by ANY of its three
+   * language variants (zh / en / ru) so a Russian or English book whose
+   * planner emitted localized headings is not falsely flagged.
    *
    * This is NOT a hard gate — the memo was already parse-validated in the
    * planner, and the writer prompt already tells the LLM to align to memo.
@@ -1036,10 +1039,44 @@ ${overrides}\n`;
       return;
     }
 
+    // Each entry: {label-by-lang, list of substrings; ANY substring counts as
+    // present}. The "current task" check accepts the heading literal in all
+    // three languages; same for "do not" and "end-of-chapter change".
+    type SectionProbe = {
+      readonly zh: string;
+      readonly en: string;
+      readonly ru: string;
+      readonly markers: ReadonlyArray<string>;
+    };
+    const probes: ReadonlyArray<SectionProbe> = [
+      {
+        zh: "当前任务",
+        en: "Current task",
+        ru: "Текущая задача",
+        markers: ["当前任务", "Current task", "Текущая задача"],
+      },
+      {
+        zh: "不要做",
+        en: "Do not",
+        ru: "Не делать",
+        markers: ["不要做", "Do not", "Не делать"],
+      },
+      {
+        zh: "章尾必须发生的改变",
+        en: "Required end-of-chapter change",
+        ru: "Обязательные сдвиги к финалу главы",
+        markers: ["章尾", "end-of-chapter", "Обязательные сдвиги", "финалу главы"],
+      },
+    ];
+
+    const labelFor = (probe: SectionProbe): string =>
+      language === "en" ? probe.en : language === "ru" ? probe.ru : probe.zh;
+
     const missing: string[] = [];
-    if (!preWriteCheck.includes("当前任务")) missing.push("当前任务");
-    if (!preWriteCheck.includes("不要做")) missing.push("不要做");
-    if (!preWriteCheck.includes("章尾")) missing.push("章尾必须发生的改变");
+    for (const probe of probes) {
+      const present = probe.markers.some((m) => preWriteCheck.includes(m));
+      if (!present) missing.push(labelFor(probe));
+    }
 
     if (missing.length > 0) {
       this.logWarn(language, {

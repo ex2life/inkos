@@ -260,4 +260,103 @@ describe("parseMemo", () => {
         .toThrow(/empty sections.*不要做/);
     });
   });
+
+  // Phase hotfix 8: Russian books need Russian H2 markers end-to-end so the
+  // writer LLM stops leaking Chinese fragments into Russian prose.
+  describe("Russian heading variants", () => {
+    const RU_SECTIONS = `
+## Текущая задача
+Настя пробирается на старую станцию и сверяет журнал смен с показаниями прибора, чтобы превратить догадку в конкретную улику.
+
+## Чего сейчас ждёт читатель
+1) Читатель ждёт, подтвердится ли подозрение о двери 7.
+2) Эта глава полностью платит — фиксирует улику на месте.
+
+## Закрыть / Не открывать
+- Закрыть: аномалия двери 7 → подтверждена уликой.
+- Не открывать: личность заказчика → придержать до главы 20.
+
+## Что несут спокойные / переходные такты
+не применимо — глава высоконапряжённая, переходных тактов нет.
+
+## Тройной вопрос по ключевому выбору
+- Главный выбор Насти в этой главе:
+  - Зачем именно так? Других путей не осталось.
+  - Соответствует ли это её интересу? Да.
+  - Соответствует ли это её характеру? Да.
+- Главный выбор противника:
+  - Зачем именно так? Чтобы замести следы.
+  - Соответствует ли это его интересу? Да.
+  - Соответствует ли это его характеру? Да.
+
+## Обязательные сдвиги к финалу главы
+- Смена информации: Настя получает прямую улику.
+- Смена отношений: Настя становится осторожнее с Артёмом.
+
+## Реестр крючков главы
+advance:
+- H03 «аномалия двери 7» → pressured → near_payoff (улика на руках).
+resolve:
+- S004 «царапины на личинке замка» → сверка завершена в этой главе.
+defer:
+- H07 «заказчик» → откладываем до главы 20, время не пришло.
+
+## Не делать
+- Не делать противника внезапно глупым.
+- Не называть заказчика прямым текстом.
+`.trim();
+
+    function makeRussianRaw(opts: { body?: string; chapter?: number; goal?: string } = {}): string {
+      const goal = opts.goal ?? '"Зафиксировать вмешательство у двери 7 — от догадки к улике на месте"';
+      const frontmatter = [
+        `chapter: ${opts.chapter ?? 12}`,
+        `goal: ${goal}`,
+        `isGoldenOpening: false`,
+        `threadRefs:\n  - H03\n  - S004`,
+      ].join("\n");
+      return `---\n${frontmatter}\n---\n${opts.body ?? RU_SECTIONS}\n`;
+    }
+
+    it("accepts a memo whose H2 headings are in Russian", () => {
+      const memo = parseMemo(makeRussianRaw(), 12, false, "ru");
+      expect(memo.chapter).toBe(12);
+      expect(memo.body).toContain("## Текущая задача");
+      expect(memo.body).toContain("## Не делать");
+      expect(memo.body).toContain("## Реестр крючков главы");
+      expect(memo.threadRefs).toEqual(["H03", "S004"]);
+    });
+
+    it("reports missing-section errors using Russian heading names when language='ru'", () => {
+      // Drop the Russian "Не делать" section entirely.
+      const body = RU_SECTIONS.replace(/## Не делать\n[\s\S]*$/, "").trim();
+      try {
+        parseMemo(makeRussianRaw({ body }), 12, false, "ru");
+        throw new Error("expected parseMemo to throw");
+      } catch (err) {
+        expect(err).toBeInstanceOf(PlannerParseError);
+        const message = (err as Error).message;
+        expect(message).toMatch(/missing sections/);
+        expect(message).toContain("## Не делать");
+        // Russian operator must NOT see Chinese variants in the error.
+        expect(message).not.toContain("## 不要做");
+      }
+    });
+
+    it("reports empty-section errors using Russian heading names when language='ru'", () => {
+      // Make "Текущая задача" section blank (under the 20-char minimum).
+      const body = RU_SECTIONS.replace(
+        /## Текущая задача\n[\s\S]*?\n\n## Чего/,
+        "## Текущая задача\nTODO\n\n## Чего",
+      );
+      try {
+        parseMemo(makeRussianRaw({ body }), 12, false, "ru");
+        throw new Error("expected parseMemo to throw");
+      } catch (err) {
+        expect(err).toBeInstanceOf(PlannerParseError);
+        const message = (err as Error).message;
+        expect(message).toMatch(/empty sections/);
+        expect(message).toContain("## Текущая задача");
+      }
+    });
+  });
 });
