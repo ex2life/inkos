@@ -1323,6 +1323,85 @@ describe("createStudioServer daemon lifecycle", () => {
     expect(json.error).not.toContain("Moonshot");
   });
 
+  it("returns the Google-specific probe diagnostic in Russian when language=ru", async () => {
+    await writeFile(join(root, "inkos.json"), JSON.stringify({
+      ...projectConfig,
+      language: "ru",
+      llm: {
+        services: [
+          { service: "google", apiFormat: "chat", stream: false },
+        ],
+      },
+    }, null, 2), "utf-8");
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      text: async () => "Not Found",
+    });
+    vi.stubGlobal("fetch", fetchMock as typeof fetch);
+    createLLMClientMock.mockImplementation(((cfg: unknown) => cfg) as any);
+    chatCompletionMock.mockRejectedValue(
+      new Error("API вернул 400 (неверный запрос). Подробности от провайдера: bad temp.\n  (baseUrl: https://generativelanguage.googleapis.com/v1beta/openai, model: gemini-2.5-flash)"),
+    );
+
+    const ruConfig = { ...cloneProjectConfig(), language: "ru" as const };
+    const { createStudioServer } = await import("./server.js");
+    const app = createStudioServer(ruConfig as never, root);
+
+    const response = await app.request("http://localhost/api/v1/services/google/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        apiKey: "google-key",
+        apiFormat: "chat",
+        stream: false,
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    const json = await response.json() as { error?: string };
+    // Header + checklist + labels must all be Russian, with no Chinese leak.
+    expect(json.error).toContain("Тест соединения с Google Gemini не пройден.");
+    expect(json.error).toContain("Проверочная модель: gemini-2.5-flash");
+    expect(json.error).toContain("API key должен быть получен из Google AI Studio");
+    expect(json.error).toContain("Gemini API");
+    expect(json.error).not.toMatch(/[一-鿿]/);
+  });
+
+  it("returns Russian validation errors for /services/:service/test when language=ru", async () => {
+    await writeFile(join(root, "inkos.json"), JSON.stringify({
+      ...projectConfig,
+      language: "ru",
+    }, null, 2), "utf-8");
+
+    const ruConfig = { ...cloneProjectConfig(), language: "ru" as const };
+    const { createStudioServer } = await import("./server.js");
+    const app = createStudioServer(ruConfig as never, root);
+
+    // Empty API key -> Russian "API key required" message.
+    const missingKey = await app.request("http://localhost/api/v1/services/openai/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey: "" }),
+    });
+    expect(missingKey.status).toBe(400);
+    const missingKeyJson = await missingKey.json() as { error?: string };
+    expect(missingKeyJson.error).toBe("Требуется указать API key");
+    expect(missingKeyJson.error).not.toMatch(/[一-鿿]/);
+
+    // Unknown service -> Russian "Unknown service: ..." message.
+    const unknown = await app.request("http://localhost/api/v1/services/no-such-service/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey: "sk-test" }),
+    });
+    expect(unknown.status).toBe(400);
+    const unknownJson = await unknown.json() as { error?: string };
+    expect(unknownJson.error).toBe("Неизвестный сервис: no-such-service");
+    expect(unknownJson.error).not.toMatch(/[一-鿿]/);
+  });
+
   it("does not return OpenAI-compatible Bailian models from the Anthropic channel connection test", async () => {
     await writeFile(join(root, "inkos.json"), JSON.stringify({
       ...projectConfig,

@@ -48,37 +48,26 @@ import { join } from "node:path";
 import { isSafeBookId } from "./safety.js";
 import { ApiError } from "./errors.js";
 import { buildStudioBookConfig } from "./book-create.js";
+import {
+  tServer,
+  tServerFormat,
+  pipelineStagesForLang,
+  agentLabelsForLang,
+  toolLabelsForLang,
+  type ServerLang,
+} from "./server-i18n.js";
 
-// -- Pipeline stage definitions per agent type --
+// -- Pipeline stage / agent / tool labels --
+//
+// Resolved per request via `resolveLang()` so operators see the labels in
+// their configured language. The agent / tool keys themselves stay in
+// English — they are stable enum tokens used by the runtime.
 
-const PIPELINE_STAGES: Record<string, string[]> = {
-  writer: [
-    "准备章节输入", "撰写章节草稿", "落盘最终章节",
-    "生成最终真相文件", "校验真相文件变更", "同步记忆索引",
-    "更新章节索引与快照",
-  ],
-  architect: [
-    "生成基础设定", "保存书籍配置", "写入基础设定文件",
-    "初始化控制文档", "创建初始快照",
-  ],
-  reviser: [
-    "加载修订上下文", "修订章节", "落盘修订结果",
-    "更新索引与快照",
-  ],
-  auditor: ["审计章节"],
-};
-
-const AGENT_LABELS: Record<string, string> = {
-  architect: "建书", writer: "写作", auditor: "审计",
-  reviser: "修订", exporter: "导出",
-};
-const TOOL_LABELS: Record<string, string> = {
-  read: "读取文件", edit: "编辑文件", grep: "搜索", ls: "列目录",
-};
-
-function resolveToolLabel(tool: string, agent?: string): string {
-  if (tool === "sub_agent" && agent) return AGENT_LABELS[agent] ?? agent;
-  return TOOL_LABELS[tool] ?? tool;
+function resolveToolLabel(tool: string, agent: string | undefined, lang: ServerLang): string {
+  if (tool === "sub_agent" && agent) {
+    return agentLabelsForLang(lang)[agent] ?? agent;
+  }
+  return toolLabelsForLang(lang)[tool] ?? tool;
 }
 
 function summarizeResult(result: unknown): string {
@@ -112,8 +101,8 @@ function filterTextChatModels<T extends { readonly id: string }>(models: Readonl
   return models.filter((model) => isTextChatModelId(model.id));
 }
 
-function nonTextModelMessage(modelId: string): string {
-  return `模型 ${modelId} 不适合文本聊天/写作。请在模型选择器中改用文本模型，例如 gemini-2.5-flash、gemini-2.5-pro 或对应服务的 chat 模型。`;
+function nonTextModelMessage(modelId: string, lang: ServerLang): string {
+  return tServerFormat(lang, "model.notTextChat", { model: modelId });
 }
 
 function extractToolError(result: unknown): string {
@@ -420,50 +409,64 @@ function formatServiceProbeError(args: {
   readonly apiFormat?: "chat" | "responses";
   readonly stream?: boolean;
   readonly error: string;
+  readonly lang: ServerLang;
 }): string {
+  const { lang } = args;
   const rawDetail = args.error
     .replace(/\n\s*\(baseUrl:[\s\S]*?\)$/m, "")
     .trim();
-  const upstreamDetail = rawDetail.includes("上游详情：")
-    ? rawDetail
+  // Detect upstream-detail blocks emitted by core in any of the three locales
+  // so we don't duplicate the prefix when assembling the final message.
+  const upstreamMarker =
+    rawDetail.includes(tServer("zh", "probe.upstreamDetail"))
+    || rawDetail.includes(tServer("en", "probe.upstreamDetail"))
+    || rawDetail.includes(tServer("ru", "probe.upstreamDetail"));
+  const upstreamDetail = upstreamMarker ? rawDetail : "";
+  const protocolName = args.apiFormat === "responses"
+    ? tServer(lang, "probe.protocolResponses")
+    : tServer(lang, "probe.protocolChat");
+  // zh keeps the original "，" separator before the streaming flag; en/ru
+  // use ASCII ", ". The label strings already carry their own colon/space.
+  const streamSuffix = typeof args.stream === "boolean"
+    ? `${lang === "zh" ? "，" : ", "}${args.stream ? tServer(lang, "probe.streaming") : tServer(lang, "probe.nonStreaming")}`
     : "";
   const context = [
-    `服务商：${args.label ?? args.service}`,
-    `测试模型：${args.model ?? "未确定"}`,
-    `协议：${args.apiFormat === "responses" ? "Responses" : "Chat / Completions"}${typeof args.stream === "boolean" ? `，${args.stream ? "流式" : "非流式"}` : ""}`,
-    `Base URL：${args.baseUrl}`,
+    `${tServer(lang, "probe.serviceLabel")}${args.label ?? args.service}`,
+    `${tServer(lang, "probe.testModelLabel")}${args.model ?? tServer(lang, "probe.modelUndetermined")}`,
+    `${tServer(lang, "probe.protocolLabel")}${protocolName}${streamSuffix}`,
+    `${tServer(lang, "probe.baseUrlLabel")}${args.baseUrl}`,
   ].join("\n");
 
   if (args.service === "google") {
     return [
-      "Google Gemini 测试连接失败。",
+      tServer(lang, "probe.googleHeader"),
       context,
       "",
-      "请优先检查：",
-      "1. API Key 是否来自 Google AI Studio 的 Gemini API key，而不是 OAuth、Vertex AI 或其它 Google 服务凭据。",
-      "2. 该 key 所属项目是否已启用 Gemini API，并且没有被限制到其它 API、来源或服务。",
-      "3. 当前地区/账号是否允许访问 Gemini API。",
-      "4. 如果 key 曾经泄露，请在 AI Studio 重新生成后再保存。",
-      upstreamDetail ? `\n上游返回：${upstreamDetail}` : "",
+      tServer(lang, "probe.googleChecksHeader"),
+      tServer(lang, "probe.googleCheck1"),
+      tServer(lang, "probe.googleCheck2"),
+      tServer(lang, "probe.googleCheck3"),
+      tServer(lang, "probe.googleCheck4"),
+      upstreamDetail ? `\n${tServer(lang, "probe.upstreamReturn")}${upstreamDetail}` : "",
     ].filter(Boolean).join("\n");
   }
 
   if (args.service === "moonshot" || args.service === "kimiCodingPlan") {
     return [
-      `${args.label ?? args.service} 测试连接失败。`,
+      tServerFormat(lang, "probe.serviceTestFailed", { service: args.label ?? args.service }),
       context,
       "",
-      "请优先检查模型是否可用，以及 kimi-k2.x 这类模型是否需要 temperature=1。",
-      rawDetail ? `\n上游返回：${rawDetail}` : "",
+      tServer(lang, "probe.moonshotHints"),
+      rawDetail ? `\n${tServer(lang, "probe.upstreamReturn")}${rawDetail}` : "",
     ].filter(Boolean).join("\n");
   }
 
   return [
-    `${args.label ?? args.service} 测试连接失败。`,
+    tServerFormat(lang, "probe.serviceTestFailed", { service: args.label ?? args.service }),
     context,
     "",
-    "请检查 API Key、模型可用性、账号额度，以及协议类型是否匹配该服务商。",
-    rawDetail ? `\n上游返回：${rawDetail}` : "",
+    tServer(lang, "probe.genericHints"),
+    rawDetail ? `\n${tServer(lang, "probe.upstreamReturn")}${rawDetail}` : "",
   ].filter(Boolean).join("\n");
 }
 
@@ -471,6 +474,7 @@ async function fetchModelsFromServiceBaseUrl(
   serviceId: string,
   baseUrl: string,
   apiKey: string,
+  lang: ServerLang,
 ): Promise<{ models: Array<{ id: string; name: string }>; error?: string; authFailed?: boolean }> {
   const endpoint = isCustomServiceId(serviceId)
     ? undefined
@@ -488,7 +492,10 @@ async function fetchModelsFromServiceBaseUrl(
       const body = await res.text().catch(() => "");
       return {
         models: [],
-        error: `服务商返回 ${res.status}: ${body.slice(0, 200)}`,
+        error: tServerFormat(lang, "probe.upstreamStatus", {
+          status: res.status,
+          body: body.slice(0, 200),
+        }),
         authFailed: res.status === 401 || res.status === 403,
       };
     }
@@ -512,7 +519,9 @@ async function probeServiceCapabilities(args: {
   preferredApiFormat?: "chat" | "responses";
   preferredStream?: boolean;
   preferredModel?: string;
+  lang: ServerLang;
 }): Promise<ServiceProbeResult> {
+  const { lang } = args;
   const rawConfig = await loadRawConfig(args.root).catch(() => ({} as Record<string, unknown>));
   const llm = (rawConfig.llm as Record<string, unknown> | undefined) ?? {};
   const envConfig = await readEnvConfigStatus(args.root);
@@ -523,12 +532,12 @@ async function probeServiceCapabilities(args: {
       : null;
 
   const baseService = isCustomServiceId(args.service) ? "custom" : args.service;
-  const modelsResponse = await fetchModelsFromServiceBaseUrl(baseService, args.baseUrl, args.apiKey);
+  const modelsResponse = await fetchModelsFromServiceBaseUrl(baseService, args.baseUrl, args.apiKey, lang);
   if (modelsResponse.authFailed) {
     return {
       ok: false,
       models: [],
-      error: modelsResponse.error ?? "API Key 无效或无权访问模型列表。",
+      error: modelsResponse.error ?? tServer(lang, "probe.invalidApiKey"),
     };
   }
   const discoveredModels = modelsResponse.models;
@@ -561,11 +570,11 @@ async function probeServiceCapabilities(args: {
     return {
       ok: false,
       models: [],
-      error: "无法自动确定模型，请先填写可用模型或提供支持 /models 的服务端点。",
+      error: tServer(lang, "probe.cannotResolveModel"),
     };
   }
 
-  let lastError = modelsResponse.error ?? "自动探测失败";
+  let lastError = modelsResponse.error ?? tServer(lang, "probe.autoProbeFailed");
 
   for (const model of modelCandidates) {
     for (const plan of buildProbePlans(args.preferredApiFormat, args.preferredStream)) {
@@ -611,6 +620,7 @@ async function probeServiceCapabilities(args: {
           apiFormat: plan.apiFormat,
           stream: plan.stream,
           error: error instanceof Error ? error.message : String(error),
+          lang,
         });
       }
     }
@@ -629,6 +639,14 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
   const app = new Hono();
   const state = new StateManager(root);
   let cachedConfig = initialConfig;
+
+  // Resolve the active operator language for response strings. Cheap
+  // re-read of the cached config on every call so PUT /api/v1/project edits
+  // (and `setLLMErrorLanguage` calls) take effect without a server restart.
+  function resolveLang(): ServerLang {
+    const lang = cachedConfig.language;
+    return lang === "en" || lang === "ru" ? lang : "zh";
+  }
 
   app.use("/*", cors());
 
@@ -1171,7 +1189,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
     }
     if (body.configSource === "env") {
       return c.json({
-        error: "Studio 运行时不支持切换到 env；env 只在 CLI/daemon/部署运行时作为覆盖层使用。",
+        error: tServer(resolveLang(), "config.envSwitchUnsupported"),
       }, 400);
     }
     if (body.configSource !== undefined) {
@@ -1193,13 +1211,14 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
       stream?: boolean;
     }>();
 
+    const lang = resolveLang();
     if (!apiKey?.trim()) {
-      return c.json({ ok: false, error: "API Key 不能为空" }, 400);
+      return c.json({ ok: false, error: tServer(lang, "config.apiKeyRequired") }, 400);
     }
 
     const resolvedBaseUrl = await resolveConfiguredServiceBaseUrl(root, service, baseUrl);
     if (!resolvedBaseUrl) {
-      return c.json({ ok: false, error: `未知服务商: ${service}` }, 400);
+      return c.json({ ok: false, error: tServerFormat(lang, "config.unknownService", { service }) }, 400);
     }
 
     const probe = await probeServiceCapabilities({
@@ -1209,19 +1228,20 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
       baseUrl: resolvedBaseUrl,
       preferredApiFormat: apiFormat,
       preferredStream: stream,
+      lang,
     });
 
     // B12: 升级响应 shape 为 { probe, chat, ... }，同时保留老字段供 UI 过渡期兼容
     const probeStatus = {
       ok: probe.ok,
       models: probe.models?.length ?? 0,
-      ...(probe.ok ? {} : { error: probe.error ?? "连接失败" }),
+      ...(probe.ok ? {} : { error: probe.error ?? tServer(lang, "probe.connectionFailed") }),
     };
 
     if (!probe.ok) {
       return c.json({
         ok: false,
-        error: probe.error ?? "连接失败",
+        error: probe.error ?? tServer(lang, "probe.connectionFailed"),
         probe: probeStatus,
         chat: null,
       }, 400);
@@ -1389,6 +1409,9 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
       }
       if (updates.language === "zh" || updates.language === "en" || updates.language === "ru") {
         existing.language = updates.language;
+        // Reflect the language change in our cached config so resolveLang()
+        // picks it up without waiting for the next loadProjectConfig call.
+        cachedConfig = { ...cachedConfig, language: updates.language };
       }
       const { writeFile: writeFileFs } = await import("node:fs/promises");
       await writeFileFs(configPath, JSON.stringify(existing, null, 2), "utf-8");
@@ -1609,7 +1632,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
       throw new ApiError(400, "SESSION_ID_REQUIRED", "sessionId is required");
     }
     if (reqModel && !isTextChatModelId(reqModel)) {
-      const message = nonTextModelMessage(reqModel);
+      const message = nonTextModelMessage(reqModel, resolveLang());
       return c.json({ error: message, response: message }, 400);
     }
 
@@ -1652,9 +1675,10 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
         } catch (e: any) {
           const msg = e?.message ?? String(e);
           if (/API key/i.test(msg)) {
+            const lang = resolveLang();
             return c.json({
-              error: `请先为 ${reqService} 配置 API Key`,
-              response: `请先在模型配置中为 ${reqService} 填写 API Key，然后再试。`,
+              error: tServerFormat(lang, "agent.configureKeyError", { service: reqService }),
+              response: tServerFormat(lang, "agent.configureKeyResponse", { service: reqService }),
             }, 400);
           }
           throw e;
@@ -1743,6 +1767,12 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
 
       // Run pi-agent session
       const collectedToolExecs: CollectedToolExec[] = [];
+      // Resolve operator language once for this agent run so stage / tool
+      // labels we broadcast over SSE stay consistent for the whole turn.
+      const agentLang: ServerLang = config.language === "en" || config.language === "ru"
+        ? config.language
+        : "zh";
+      const localizedStages = pipelineStagesForLang(agentLang);
       const result = await runAgentSession(
         {
           model,
@@ -1768,13 +1798,13 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
             if (event.type === "tool_execution_start") {
               const args = event.args as Record<string, unknown> | undefined;
               const agent = event.toolName === "sub_agent" ? (args?.agent as string | undefined) : undefined;
-              const stages = agent ? (PIPELINE_STAGES[agent] ?? []) : [];
+              const stages = agent ? (localizedStages[agent] ?? []) : [];
 
               collectedToolExecs.push({
                 id: event.toolCallId,
                 tool: event.toolName,
                 agent,
-                label: resolveToolLabel(event.toolName, agent),
+                label: resolveToolLabel(event.toolName, agent, agentLang),
                 status: "running",
                 args,
                 stages: stages.length > 0
@@ -1908,7 +1938,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
           }, 502);
         }
 
-        const emptyMessage = "模型未返回文本内容。请检查协议类型（chat/responses）、流式开关或上游服务兼容性。";
+        const emptyMessage = tServer(resolveLang(), "agent.emptyResponse");
         return c.json({
           error: { code: "AGENT_EMPTY_RESPONSE", message: emptyMessage },
           response: emptyMessage,
@@ -1958,9 +1988,10 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
 
       // Agent busy — return 429 with user-friendly message
       if (/already processing|prompt.*queue/i.test(msg)) {
+        const lang = resolveLang();
         return c.json({
-          error: { code: "AGENT_BUSY", message: "正在处理中，请等待当前操作完成" },
-          response: "正在处理中，请等待当前操作完成后再发送。",
+          error: { code: "AGENT_BUSY", message: tServer(lang, "agent.busyMessage") },
+          response: tServer(lang, "agent.busyResponse"),
         }, 429);
       }
 
@@ -1982,6 +2013,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
       existing.language = language;
       const { writeFile: writeFileFs } = await import("node:fs/promises");
       await writeFileFs(configPath, JSON.stringify(existing, null, 2), "utf-8");
+      cachedConfig = { ...cachedConfig, language };
       return c.json({ ok: true, language });
     } catch (e) {
       return c.json({ error: String(e) }, 500);
@@ -2661,6 +2693,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
         preferredApiFormat: currentConfig.llm.apiFormat,
         preferredStream: currentConfig.llm.stream,
         preferredModel: currentConfig.llm.model,
+        lang: resolveLang(),
       });
       checks.llmConnected = probe.ok;
     } catch { /* ignore */ }
